@@ -47,13 +47,13 @@ class WorkersWindow(QWidget):
         self.combo_gild.resize(150, 30)
         self.combo_gild.move(1000, 260)
         self.combo_gild.setStyleSheet(styles.workers_combo())
-        # идентификатор
+        # идентификатор (находтися под кнопкой "изменить")
         self.id = QLineEdit(self)
         self.id.resize(150, 30)
-        self.id.move(1000, 310)
+        self.id.move(1200, 310)
         self.id.setStyleSheet(styles.workers_input())
         self.id.setReadOnly(True)
-        #self.id.setVisible(False)
+        self.id.setVisible(False)
         # кнопка изменить запись
         self.btn_edit = QPushButton('изменить', self)
         self.btn_edit.resize(150, 30)
@@ -104,12 +104,13 @@ class WorkersWindow(QWidget):
     def edit_worker(self):
         index_role = self.combo_role.currentIndex()
         index_gild = self.combo_gild.currentIndex()
+
         try:
             with connect(**db.config()) as conn:
                 with conn.cursor() as cur:
                     cur.execute(db.sql_edit_worker(), (self.input_sname.text(), self.input_fname.text(),
                                                        self.input_lname.text(), index_role,
-                                                       index_gild, self.id.text()))
+                                                       index_gild, int(self.id.text())))
         except:
             pass
         self.TableWorkers.upd_table()
@@ -153,7 +154,7 @@ class TableWorkers(QTableWidget):
         self.wg = wg
         super().__init__(wg)
         self.setGeometry(10, 10, 300, 900)
-        self.setColumnCount(5)
+        self.setColumnCount(6)
         self.setStyleSheet(styles.workers_table())
         self.verticalHeader().hide()
         self.setEditTriggers(QTableWidget.NoEditTriggers)  # запретить изменять поля
@@ -162,14 +163,12 @@ class TableWorkers(QTableWidget):
     # обработка щелчка мыши по таблице
     def click_table(self, row, col):  # row - номер строки, col - номер столбца
         self.wg.TableWorkers.selectRow(row)
-        #self.wg.id.setText(self.item(row, 5).text())
-        #TableWorkers.ids = self.item(row, 5).text()
+        self.wg.id.setText(self.item(row, 5).text())
         self.wg.input_sname.setText(self.item(row, 0).text().strip())
         self.wg.input_fname.setText(self.item(row, 1).text().strip())
         self.wg.input_lname.setText(self.item(row, 2).text().strip())
-        self.wg.combo_role.setCurrentIndex(int(self.item(row, 3).text()))
-        self.wg.combo_gild.setCurrentIndex(int(self.item(row, 4).text()))
-
+        self.wg.combo_role.setCurrentText(self.item(row, 3).text())
+        self.wg.combo_gild.setCurrentText(self.item(row, 4).text())
     # обновление таблицы
     def upd_table(self):
         self.clear()

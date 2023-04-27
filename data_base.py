@@ -11,7 +11,10 @@ class DataBase:
 
     @staticmethod
     def sql_read_workers():
-        return "SELECT second_name, first_name, last_name, role, gild, id FROM workers ORDER BY first_name"
+        return "SELECT w.second_name, w.first_name, w.last_name, r.role, g.gild, w.id FROM workers w \
+                JOIN roles r ON w.role = r.id  \
+                JOIN gilds g ON w.gild = g.id  \
+                ORDER BY second_name"
 
     @staticmethod
     def sql_add_worker():
@@ -19,10 +22,7 @@ class DataBase:
 
     @staticmethod
     def sql_edit_worker():
-        return "UPDATE workers SET (second_name, first_name, last_name, role, gild) = (%s,%s,%s,%s,%s) WHERE id = %s)"
-
-
-
+        return "UPDATE workers SET (second_name, first_name, last_name, role, gild) = (%s,%s,%s,%s,%s) WHERE id = %s"
 
     @staticmethod
     def sql_del_worker():
