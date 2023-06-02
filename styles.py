@@ -19,38 +19,39 @@ class Styles:
         if flag:
             return "QPushButton \
                             { \
-                            background-color: rgb(80, 80, 80); \
-                            border: 1px solid gray; \
-                            border-radius: 3px; \
+                            background-color: rgb(60, 60, 60); \
+                            border: none; \
                             font-family: Calibri Light; \
-                            font: 15px; \
-                            padding: 5px; \
+                            color: white; \
+                            font: 30px; \
+                            padding: 0px; \
                             } \
                     QToolTip \
                             { \
                             font-size: 15px; \
                             font-family: Calibri Light; \
-                            color:  white; \
+                            color: white; \
                             background-color: black; \
                             border: 0px solid gray; \
                             }"
         else:
             return "QPushButton \
                             { \
-                            background-color: rgb(45, 45, 45); \
-                            border: 1px solid rgb(100, 100, 100); \
-                            border-radius: 3px; \
-                            padding: 5px; \
+                            background-color: transparent; \
+                            border: none; \
+                            font-family: Calibri Light; \
+                            color: gray; \
+                            font: 30px; \
+                            padding: 0px; \
                             } \
                     QPushButton:hover \
                             { \
-                            background-color: rgb(70, 70, 70); \
-                            padding: 5px; \
+                            color: white; \
+                            padding: 0px; \
                             } \
                     QPushButton:pressed \
                             { \
-                            background-color: rgb(120, 120, 120); \
-                            padding: 5px; \
+                            padding: 0px; \
                             } \
                     QToolTip \
                             { \
@@ -62,12 +63,12 @@ class Styles:
                             }"
 
     @staticmethod
-    def workres_btn():
+    def workers_btn():
         return "QPushButton \
                             { \
-                            background-color: rgb(45, 45, 45); \
-                            border: 1px outset rgb(60, 60, 60); \
-                            border-radius: 3px; \
+                            background-color: rgb(60, 60, 60); \
+                            border: none; \
+                            border-radius: 0px; \
                             font-family: Calibri Light; \
                             font: 15px; \
                             padding: 0px; \
@@ -75,34 +76,34 @@ class Styles:
                             } \
                 QPushButton:hover \
                             { \
-                            border: 1px outset rgb(70, 70, 70); \
+                            background-color: rgb(80, 80, 80); \
+                            border: 0px outset rgb(70, 70, 70); \
                             color: rgb(180, 180, 180); \
                             } \
                 QPushButton:pressed \
                             { \
-                            background-color: rgb(45, 45, 45); \
+                            background-color: rgb(30, 30, 30); \
                             border-style: inset; \
                             }"
 
     @staticmethod
     def workers_input():
         return "QLineEdit { \
-                            background-color: rgb(45, 45, 45); \
-                            border: 1px outset rgb(60, 60, 60); \
-                            border-radius: 3px; \
+                            background-color: rgb(60, 60, 60); \
+                            border: none; \
                             font-family: Calibri Light; \
                             font: 15px; \
                             padding: 0px; \
-                            color: rgb(200, 200, 200);} \
+                            color: rgb(200, 200, 200); \
+                            padding: 5px; \
+                            } \
                 QLineEdit:hover \
                             { \
-                            border: 1px outset rgb(70, 70, 70); \
+                            background-color: rgb(80, 80, 80); \
                             } \
                 QLineEdit:focus \
                             { \
                             background-color: rgb(30, 30, 30); \
-                            border: 1px inset rgb(60, 60, 60); \
-                            border-color: gray; \
                             padding: 5px; \
                             } \
                 QToolTip \
@@ -130,7 +131,7 @@ class Styles:
                 QTableWidget::item::selected \
                             { \
                             background-color: rgb(40, 40, 40); \
-                            color: rgb(200, 100, 0); \
+                            color: white; \
                             }"
 
     @staticmethod
@@ -158,6 +159,46 @@ class Styles:
                             }"
 
     @staticmethod
+    def hor_scrollbar():
+        return "QScrollBar:horizontal \
+                            { \
+                            border: none; \
+                            background-color: black; \
+                            height: 10px; \
+                            margin: 0px 0px 0px 0px; \
+                            } \
+                QScrollBar::handle:horizontal \
+                            { \
+                            border: 0px solid gray; \
+                            background-color: rgb(70, 70, 70); \
+                            } \
+                QScrollBar::handle:hover:horizontal \
+                            { \
+                            background: rgb(45, 45, 45); \
+                            }"
+
+
+
+    @staticmethod
+    def ver_scrollbar():
+        return "QScrollBar \
+                            { \
+                            border: none; \
+                            background-color: black; \
+                            width: 10px; \
+                            margin: 0px 0px 0px 0px; \
+                            } \
+                QScrollBar::handle \
+                            { \
+                            border: 0px solid gray; \
+                            background-color: rgb(70, 70, 70); \
+                            } \
+                QScrollBar::handle:hover \
+                            { \
+                            background: rgb(45, 45, 45); \
+                            }"
+
+    @staticmethod
     def table_header():
         return "QHeaderView::section \
                             { \
@@ -166,33 +207,28 @@ class Styles:
                             color: rgb(200, 100, 0); \
                             font-size: 15px; \
                             font-family: Calibri Light; \
-                           } \
-                QHeaderView::selected \
-                            { \
-                            color: red; \
-                            }"
+                           }"
+
     @staticmethod
     def workers_combo():
         return "QComboBox \
                         { \
-                        background-color: rgb(45, 45, 45); \
-                        border: 1px outset rgb(60, 60, 60); \
-                        border-radius: 3px; \
+                        background-color: rgb(60, 60, 60); \
+                        border: none; \
                         font-family: Calibri Light; \
                         font: 15px; \
-                        padding: 0px; \
+                        padding: 5px; \
                         color: rgb(200, 200, 200);} \
                         } \
                 QComboBox::hover \
                         { \
-                        border: 1px outset rgb(70, 70, 70); \
+                        background-color: rgb(80, 80, 80); \
                         } \
                 QComboBox:focus \
                         { \
                         background-color: rgb(45, 45, 45); \
-                        border: 1px outset rgb(60, 60, 60); \
-                        border-color: gray; \
-                        padding: 0px; \
+                        border: none; \
+                        padding: 5px; \
                         } \
                 QComboBox::drop-down \
                         { \
@@ -201,15 +237,15 @@ class Styles:
                 QComboBox:on \
                         { \
                         background-color: rgb(30, 30, 30); \
-                        border: 1px inset rgb(60, 60, 60); \
+                        border: none; \
                         border-color: gray; \
-                        padding: 0px; \
+                        padding: 5px; \
                         } \
                 QComboBox QListView \
                         { \
                         font-size: 15px; \
                         font-family: Calibri Light; \
-                        border: 1px outset rgb(60, 60, 60); \
+                        border: none; \
                         padding: 5px; \
                         background-color: rgb(30, 30, 30); \
                         outline: 0px; \
@@ -219,13 +255,14 @@ class Styles:
                         { \
                         font-size: 15px; \
                         font-family: Calibri Light; \
-                        padding-left: 10px; \
+                        padding-left: 5px; \
                         background-color: rgb(30, 30, 30); \
                         outline: 0px; \
                         color: rgb(200, 200, 200); \
                         } \
                 QComboBox QListView::item::hover \
                         { \
+                        background-color: rgb(30, 30, 30); \
                         color: rgb(10, 10, 10); \
                         } \
                 QToolTip \
@@ -238,8 +275,42 @@ class Styles:
                         }"
 
     @staticmethod
+    def input_text():
+        return "QTextEdit \
+                            { \
+                            background-color: rgb(60, 60, 60); \
+                            border: none; \
+                            font-family: Calibri Light; \
+                            font: 15px; \
+                            padding: 5px; \
+                            color: rgb(200, 200, 200); \
+                            } \
+                QTextEdit::hover \
+                        { \
+                        background-color: rgb(80, 80, 80); \
+                        } \
+                QTextEdit:focus \
+                            { \
+                            background-color: rgb(30, 30, 30); \
+                            padding: 5px; \
+                            } \
+                QScrollBar \
+                            { \
+                            background: rgb(0, 0, 0); \
+                            width: 10px \
+                            } \
+                QScrollBar::handle \
+                            { \
+                            background: rgb(40, 40, 40); \
+                            } \
+                QScrollBar::handle::pressed \
+                            { \
+                            background: rgb(10, 10, 10); \
+                            }"
+
+    @staticmethod
     def color_rating(data_rating):
-        rating_color = {1: 'color: rgb(255, 150, 0);', 2: 'color: rgb(200, 150, 0);',
+        rating_color = {1: 'color: red;', 2: 'color: rgb(200, 150, 0);',
                         3: 'color: rgb(80, 150, 60);'}
         return rating_color.get(data_rating, '')
 

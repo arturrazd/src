@@ -1,27 +1,34 @@
 import calendar
+import locale
 from datetime import datetime, timedelta
 from styles import AlignDelegate
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import *
 from psycopg2 import connect
 from data_base import DataBase
 from styles import Styles
 
+locale.setlocale(category=locale.LC_ALL, locale="Russian")
+
 
 class WorkersWindow(QWidget):
-
     def __init__(self):
         super().__init__()
-        self.table_workers = TableWorkers(self)
+
         main_btn_size = QSize(30, 30)
         input_btn_size = QSize(150, 30)
+        icon_size = QSize(15, 15)
+
+        self.dict_gilds = dict()
+        self.list_role = list()
+        self.table_workers = TableWorkers(self)
         # кнопка "обновить"
         self.btn_refresh = QPushButton('', self)
         self.btn_refresh.setIcon(QtGui.QIcon('refresh.png'))
-        self.btn_refresh.setIconSize(QtCore.QSize(20, 20))
+        self.btn_refresh.setIconSize(icon_size)
         self.btn_refresh.setFixedSize(main_btn_size)
-        self.btn_refresh.setStyleSheet(Styles.workres_btn())
+        self.btn_refresh.setStyleSheet(Styles.workers_btn())
         self.btn_refresh.clicked.connect(self.table_workers.upd_table)
         self.btn_refresh.clicked.connect(self.upd_lables)
         # фамилия
@@ -38,14 +45,15 @@ class WorkersWindow(QWidget):
         self.input_lname.setStyleSheet(Styles.workers_input())
         # должность
         self.combo_role = QComboBox(self)
-        self.list_role = self.list_role()
-        self.combo_role.addItems(self.list_role)
+        combo_list_role = self.get_list_role()
+        self.combo_role.addItems(combo_list_role)
         self.combo_role.setFixedSize(input_btn_size)
         self.combo_role.setStyleSheet(Styles.workers_combo())
+        self.combo_role.activated.connect(self.get_change_list_gild)
         # цех/служба
         self.combo_gild = QComboBox(self)
-        self.list_gild = self.list_gild()
-        self.combo_gild.addItems(self.list_gild)
+        self.get_list_gild()
+        self.combo_gild.addItem('цех/отдел')
         self.combo_gild.setFixedSize(input_btn_size)
         self.combo_gild.setStyleSheet(Styles.workers_combo())
         # идентификатор (скрыт)
@@ -57,23 +65,23 @@ class WorkersWindow(QWidget):
         # кнопка изменить запись
         self.btn_edit = QPushButton('', self)
         self.btn_edit.setIcon(QtGui.QIcon('edit_worker.png'))
-        self.btn_edit.setIconSize(QtCore.QSize(20, 20))
+        self.btn_edit.setIconSize(icon_size)
         self.btn_edit.setFixedSize(main_btn_size)
-        self.btn_edit.setStyleSheet(Styles.workres_btn())
+        self.btn_edit.setStyleSheet(Styles.workers_btn())
         self.btn_edit.clicked.connect(self.edit_worker)
         # кнопка добавить запись
         self.btn_add = QPushButton('', self)
         self.btn_add.setIcon(QtGui.QIcon('add_worker.png'))
-        self.btn_add.setIconSize(QtCore.QSize(20, 20))
+        self.btn_add.setIconSize(icon_size)
         self.btn_add.setFixedSize(main_btn_size)
-        self.btn_add.setStyleSheet(Styles.workres_btn())
+        self.btn_add.setStyleSheet(Styles.workers_btn())
         self.btn_add.clicked.connect(self.add_worker)
         # кнопка удалить запись
         self.btn_del = QPushButton('', self)
         self.btn_del.setIcon(QtGui.QIcon('del_worker.png'))
-        self.btn_del.setIconSize(QtCore.QSize(20, 20))
+        self.btn_del.setIconSize(icon_size)
         self.btn_del.setFixedSize(main_btn_size)
-        self.btn_del.setStyleSheet(Styles.workres_btn())
+        self.btn_del.setStyleSheet(Styles.workers_btn())
         self.btn_del.clicked.connect(self.del_worker)
         # курсоры
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
@@ -93,7 +101,7 @@ class WorkersWindow(QWidget):
         self.page_layout = QHBoxLayout()
         self.page_layout.setContentsMargins(0, 0, 0, 0)
         self.panel_layout = QVBoxLayout()
-        self.panel_layout.setContentsMargins(0, 0, 0, 0)
+        self.panel_layout.setContentsMargins(0, 0, 10, 0)
         self.button_layout = QHBoxLayout()
         self.button_layout.setContentsMargins(0, 0, 0, 0)
         self.input_layout = QVBoxLayout()
@@ -116,7 +124,6 @@ class WorkersWindow(QWidget):
         self.panel_layout.addLayout(self.input_layout)
         self.panel_layout.addStretch(0)
         self.panel_layout.setSpacing(10)
-
         self.page_layout.addWidget(self.table_workers)
         self.page_layout.addLayout(self.panel_layout)
         self.page_layout.setSpacing(10)
@@ -143,8 +150,9 @@ class WorkersWindow(QWidget):
                                                                self.input_lname.text(), index_role,
                                                                index_gild))
                     insert_id = cursor.fetchone()
-                    self.table_workers.add_worker_report(insert_id)
-                    self.table_workers.upd_table()
+
+            self.table_workers.add_worker_report(insert_id)
+            self.table_workers.upd_table()
         except:
             pass
 
@@ -173,27 +181,41 @@ class WorkersWindow(QWidget):
             pass
         self.table_workers.upd_table()
 
-    def list_role(self):
+    def get_list_role(self):
         try:
             with connect(**DataBase.config()) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_role())
-                    list_role_out = [''] + [item for t in cursor.fetchall() for item in t if
+                    list_role = cursor.fetchall()
+                    self.list_role = list_role
+                    combo_list_role = ['должность'] + [item for t in self.list_role for item in t if
                                             isinstance(item, str)]
-                    return list_role_out
+                    return combo_list_role
         except:
             pass
 
-    def list_gild(self):
+    def get_list_gild(self):
         try:
             with connect(**DataBase.config()) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_gild())
-                    list_gild_out = [''] + [item for t in cursor.fetchall() for item in t if
-                                            isinstance(item, str)]
-                    return list_gild_out
+                    self.list_gild = cursor.fetchall()
+                    for role in self.list_role:
+                        self.dict_gilds[role[1]] = []
+                        for gild in self.list_gild:
+                            if role[0] == gild[2]:
+                                self.dict_gilds[role[1]].append(gild[1])
         except:
             pass
+
+    def get_change_list_gild(self):
+        self.combo_gild.clear()
+        if self.combo_role.currentIndex() > 0:
+            current_role = self.combo_role.currentText()
+            current_list = self.dict_gilds.get(current_role)
+        else:
+            current_list = ['цех/отдел']
+        self.combo_gild.addItems(current_list)
 
 
 # класс - таблица
@@ -213,13 +235,14 @@ class TableWorkers(QTableWidget):
         self.horizontalHeader().setSectionsClickable(False)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setStyleSheet(Styles.table_workers())
+        self.horizontalScrollBar().setStyleSheet(Styles.hor_scrollbar())
+        self.verticalScrollBar().setStyleSheet(Styles.ver_scrollbar())
         self.horizontalHeader().setStyleSheet(Styles.table_header())
         self.setEditTriggers(QTableWidget.NoEditTriggers)  # запретить изменять поля
         self.cellClicked.connect(self.click_table)  # установить обработчик щелча мыши в таблице
         self.setMinimumSize(500, 500)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.verticalScrollBar().setSingleStep(10)
+        self.add_month()
         self.upd_table()
 
     # обработка щелчка мыши по таблице
@@ -254,26 +277,42 @@ class TableWorkers(QTableWidget):
                     self.setRowHeight(i, 26)
                     i += 1
 
-    def add_worker_report(self, new_worker_id):
+    def add_month(self):
         try:
             with connect(**DataBase.config()) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
                     cur_year = datetime.now().date().year
                     cur_month = datetime.now().date().month
-                    cursor.execute(DataBase.sql_read_date_report(), (cur_month,))
+                    cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
                     date_list = cursor.fetchall()
                     if len(date_list) == 0:
                         monthrange = calendar.monthrange(cur_year, cur_month)
+                        cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
+                        date_list = cursor.fetchall()
+                        cursor.execute(DataBase.sql_read_workers_2())
+                        worker_list = cursor.fetchall()
                         first_number_day = monthrange[0] + 1
                         first_day = datetime.today().replace(day=1)
                         for day in range(monthrange[1]):
                             cursor.execute(DataBase.sql_insert_date_report(),
-                                           (first_day + timedelta(days=day), first_number_day))
+                            (first_day + timedelta(days=day), first_number_day))
                             first_number_day = (first_number_day + 1, 1)[first_number_day > 6]
-                        cursor.execute(DataBase.sql_read_date_report(), (cur_month,))
-                        date_list = cursor.fetchall()
-                    for date in date_list:
-                        cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0))
+                            if len(worker_list) != 0:
+                                for worker in worker_list:
+                                    for date in date_list:
+                                        cursor.execute(DataBase.sql_insert_workers_report(),
+                                        (date[0], worker[0], 0, 0, 0))
         except:
             pass
+
+    def add_worker_report(self, new_worker_id):
+        with connect(**DataBase.config()) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cur_year = datetime.now().date().year
+                cur_month = datetime.now().date().month
+                cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
+                date_list = cursor.fetchall()
+                for date in date_list:
+                    cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0, 0, 0, ''))

@@ -39,11 +39,13 @@ class DataBase:
 
     @staticmethod
     def sql_list_gild():
-        return "SELECT id, gild FROM gilds ORDER BY id"
+        return "SELECT id, gild, role FROM gilds ORDER BY id"
 
     @staticmethod
     def sql_read_date_report():
-        return "SELECT id, date, day_of_week FROM date_report WHERE extract(month from date::timestamp) = %s \
+        return "SELECT id, date, day_of_week FROM date_report \
+                WHERE extract(year from date::timestamp) = %s \
+                AND extract(month from date::timestamp) = %s \
                ORDER BY date"
 
     @staticmethod
@@ -52,11 +54,12 @@ class DataBase:
 
     @staticmethod
     def sql_insert_workers_report():
-        return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status) values (%s,%s,%s,%s,%s)"
+        return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status, place, time_of_day, description) values (%s,%s,%s,%s,%s,%s,%s,%s)"
 
     @staticmethod
     def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_gild):
-        return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status, wr.worker_id, wr.day_id, w.gild  \
+        return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status, \
+                        wr.worker_id, wr.day_id, w.gild, wr.place, wr.time_of_day, wr.description, w.role \
                 FROM workers_report wr \
                 join workers w on w.id = wr.worker_id \
                 join date_report dr on dr.id = wr.day_id \
@@ -70,7 +73,7 @@ class DataBase:
 
     @staticmethod
     def sql_edit_table():
-        return "UPDATE workers_report SET (work_hour, rating, status) = (%s,%s,%s) \
+        return "UPDATE workers_report SET (work_hour, rating, status, place, time_of_day, description) = (%s,%s,%s,%s,%s,%s) \
                 WHERE worker_id = %s AND day_id = %s \
                 RETURNING day_id, worker_id"
 
