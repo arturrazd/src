@@ -1,9 +1,9 @@
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QTabWidget, QHBoxLayout, QLabel
-from workers_window import WorkersWindow as ww
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QLabel, QStackedLayout, QFrame
+from workers_window import WorkersWindow
+from table_window import TableWindow
 from styles import Styles as styles
-
 
 
 class MainWindow(QMainWindow):
@@ -13,125 +13,77 @@ class MainWindow(QMainWindow):
         self.right_widget = None
         self.setWindowTitle("Collective")
         self.setWindowIcon(QtGui.QIcon('icon.png'))
-        self.setStyleSheet("MainWindow { background: rgb(50, 50, 50) }")
-        self.WorkersWindow = ww()
-
+        self.setStyleSheet(styles.main_window())
+        self.workers_window = WorkersWindow()
+        self.table_window = TableWindow()
 
         # создание кнопок панели бокового меню
         self.btn_1 = QPushButton('', self)
         self.btn_2 = QPushButton('', self)
         self.btn_3 = QPushButton('', self)
-        self.btn_4 = QPushButton('', self)
 
-        # оформелние кнопок панели бокового меню
-        self.btn_1.setStyleSheet(styles.main_btn())
-        self.btn_2.setStyleSheet(styles.main_btn())
-        self.btn_3.setStyleSheet(styles.main_btn())
-        self.btn_4.setStyleSheet(styles.main_btn())
-
+        # всплывающие подсказки для кнопок
+        self.btn_1.setToolTip('табель')
+        self.btn_2.setToolTip('список сотрудников')
+        self.btn_3.setToolTip('отчеты')
         # икноки для кнопок
-        self.btn_1.setFixedSize(64, 100)
+        self.btn_1.setFixedSize(40, 40)
         self.btn_1.setIcon(QtGui.QIcon('icon_btn1.png'))
-        self.btn_1.setIconSize(QtCore.QSize(64, 64))
-        self.btn_2.setFixedSize(64, 100)
+        self.btn_1.setIconSize(QtCore.QSize(20, 20))
+        self.btn_2.setFixedSize(40, 40)
         self.btn_2.setIcon(QtGui.QIcon('icon_btn2.png'))
-        self.btn_2.setIconSize(QtCore.QSize(64, 64))
-        self.btn_3.setFixedSize(64, 100)
+        self.btn_2.setIconSize(QtCore.QSize(20, 20))
+        self.btn_3.setFixedSize(40, 40)
         self.btn_3.setIcon(QtGui.QIcon('icon_btn3.png'))
-        self.btn_3.setIconSize(QtCore.QSize(64, 64))
-        self.btn_4.setFixedSize(64, 100)
-        self.btn_4.setIcon(QtGui.QIcon('icon_btn4.png'))
-        self.btn_4.setIconSize(QtCore.QSize(64, 64))
-
+        self.btn_3.setIconSize(QtCore.QSize(20, 20))
         # курсоры для кнопок
         self.btn_1.setCursor(Qt.PointingHandCursor)
         self.btn_2.setCursor(Qt.PointingHandCursor)
         self.btn_3.setCursor(Qt.PointingHandCursor)
-        self.btn_4.setCursor(Qt.PointingHandCursor)
-
         # сыбытия нажатий на кнопоки
         self.btn_1.clicked.connect(self.button1)
         self.btn_2.clicked.connect(self.button2)
         self.btn_3.clicked.connect(self.button3)
-        self.btn_4.clicked.connect(self.button4)
 
-        # создание боковых вкладок
-        self.tab1 = self.page1()
-        self.tab2 = self.page2()
-        self.tab3 = self.page3()
-        self.tab4 = self.page4()
+        self.page_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
 
-        self.initUI()
+        self.button_layout.addWidget(self.btn_1)
+        self.button_layout.addWidget(self.btn_2)
+        self.button_layout.addWidget(self.btn_3)
+        self.button_layout.addStretch(0)
+        self.button_layout.setSpacing(10)
 
-    def initUI(self):
-        left_layout = QVBoxLayout()
-        left_layout.addWidget(self.btn_1)
-        left_layout.addWidget(self.btn_2)
-        left_layout.addWidget(self.btn_3)
-        left_layout.addWidget(self.btn_4)
-        left_widget = QWidget()
-        left_widget.setLayout(left_layout)
+        self.page_layout.addLayout(self.button_layout)
 
-        self.right_widget = QTabWidget()
-        self.right_widget.tabBar().setObjectName("mainTab")
-        self.right_widget.addTab(self.tab1, '')
-        self.right_widget.addTab(self.tab2, '')
-        self.right_widget.addTab(self.tab3, '')
-        self.right_widget.addTab(self.tab4, '')
-        self.right_widget.setCurrentIndex(0)
-        self.right_widget.setStyleSheet('QTabBar::tab{width: 0; \
-            height: 0; margin: 0; padding: 0; border: none;}')
+        self.stack_layout = QStackedLayout()
+        self.page_layout.addLayout(self.stack_layout)
 
-        main_layout = QHBoxLayout()
-        main_layout.addWidget(left_widget)
-        main_layout.addWidget(self.right_widget)
-        main_layout.setStretch(0, 5)
-        main_layout.setStretch(1, 300)
-        main_widget = QWidget()
-        main_widget.setLayout(main_layout)
-        main_widget.setStyleSheet("border:none;")
-        self.setCentralWidget(main_widget)
+        self.stack_layout.addWidget(self.table_window)
+        self.stack_layout.addWidget(self.workers_window)
+
+        self.main_widget = QWidget()
+        self.main_widget.setLayout(self.page_layout)
+        self.setCentralWidget(self.main_widget)
+        # при запуске активируем нажатие первой кнопки
+        self.button1()
 
     def button1(self):
-        self.right_widget.setCurrentIndex(0)
+        self.stack_layout.setCurrentIndex(0)
+        self.btn_1.setStyleSheet(styles.main_btn(True))
+        self.btn_2.setStyleSheet(styles.main_btn(False))
+        self.btn_3.setStyleSheet(styles.main_btn(False))
 
     def button2(self):
-        self.right_widget.setCurrentIndex(1)
+        self.stack_layout.setCurrentIndex(1)
+        self.btn_1.setStyleSheet(styles.main_btn(False))
+        self.btn_2.setStyleSheet(styles.main_btn(True))
+        self.btn_3.setStyleSheet(styles.main_btn(False))
 
     def button3(self):
-        self.right_widget.setCurrentIndex(2)
+        self.stack_layout.setCurrentIndex(2)
+        self.btn_1.setStyleSheet(styles.main_btn(False))
+        self.btn_2.setStyleSheet(styles.main_btn(False))
+        self.btn_3.setStyleSheet(styles.main_btn(True))
 
-    def button4(self):
-        self.right_widget.setCurrentIndex(3)
 
-    def page1(self):
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(self.WorkersWindow)
-        main = QWidget()
-        main.setLayout(main_layout)
-        main.setStyleSheet(styles.pages())
-        return main
-
-    def page2(self):
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(QLabel('page 2'))
-        main_layout.addStretch(5)
-        main = QWidget()
-        main.setLayout(main_layout)
-        return main
-
-    def page3(self):
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(QLabel('page 3'))
-        main_layout.addStretch(5)
-        main = QWidget()
-        main.setLayout(main_layout)
-        return main
-
-    def page4(self):
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(QLabel('page 4'))
-        main_layout.addStretch(5)
-        main = QWidget()
-        main.setLayout(main_layout)
-        return main
