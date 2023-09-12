@@ -54,7 +54,7 @@ class DataBase:
 
     @staticmethod
     def sql_insert_workers_report():
-        return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status, place, time_of_day, description) values (%s,%s,%s,%s,%s,%s,%s,%s)"
+        return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status, place, time_of_day, description, team) values (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
 
     @staticmethod
     def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_gild):

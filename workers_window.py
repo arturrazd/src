@@ -16,6 +16,7 @@ class WorkersWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.list_gild = None
         main_btn_size = QSize(30, 30)
         input_btn_size = QSize(150, 30)
         icon_size = QSize(15, 15)
@@ -69,6 +70,7 @@ class WorkersWindow(QWidget):
         self.btn_edit.setFixedSize(main_btn_size)
         self.btn_edit.setStyleSheet(Styles.workers_btn())
         self.btn_edit.clicked.connect(self.edit_worker)
+        self.btn_edit.clicked.connect(self.table_workers.upd_table)
         # кнопка добавить запись
         self.btn_add = QPushButton('', self)
         self.btn_add.setIcon(QtGui.QIcon('add_worker.png'))
@@ -76,6 +78,7 @@ class WorkersWindow(QWidget):
         self.btn_add.setFixedSize(main_btn_size)
         self.btn_add.setStyleSheet(Styles.workers_btn())
         self.btn_add.clicked.connect(self.add_worker)
+        self.btn_add.clicked.connect(self.table_workers.upd_table)
         # кнопка удалить запись
         self.btn_del = QPushButton('', self)
         self.btn_del.setIcon(QtGui.QIcon('del_worker.png'))
@@ -83,6 +86,7 @@ class WorkersWindow(QWidget):
         self.btn_del.setFixedSize(main_btn_size)
         self.btn_del.setStyleSheet(Styles.workers_btn())
         self.btn_del.clicked.connect(self.del_worker)
+        self.btn_del.clicked.connect(self.table_workers.upd_table)
         # курсоры
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
         self.btn_add.setCursor(Qt.PointingHandCursor)
@@ -137,7 +141,8 @@ class WorkersWindow(QWidget):
         self.input_fname.setText('')
         self.input_lname.setText('')
         self.combo_role.setCurrentIndex(0)
-        self.combo_gild.setCurrentIndex(0)
+        self.combo_gild.clear()
+        self.combo_gild.addItems(['цех/отдел'])
 
     def add_worker(self):
         index_role = self.combo_role.currentIndex()
@@ -189,7 +194,7 @@ class WorkersWindow(QWidget):
                     list_role = cursor.fetchall()
                     self.list_role = list_role
                     combo_list_role = ['должность'] + [item for t in self.list_role for item in t if
-                                            isinstance(item, str)]
+                                                       isinstance(item, str)]
                     return combo_list_role
         except:
             pass
@@ -252,6 +257,7 @@ class TableWorkers(QTableWidget):
         self.wg.input_fname.setText(self.item(row, 2).text().strip())
         self.wg.input_lname.setText(self.item(row, 3).text().strip())
         self.wg.combo_role.setCurrentText(self.item(row, 4).text())
+        self.get_change_list_gild()
         self.wg.combo_gild.setCurrentText(self.item(row, 5).text())
 
     # обновление таблицы
@@ -296,13 +302,13 @@ class TableWorkers(QTableWidget):
                         first_day = datetime.today().replace(day=1)
                         for day in range(monthrange[1]):
                             cursor.execute(DataBase.sql_insert_date_report(),
-                            (first_day + timedelta(days=day), first_number_day))
+                                           (first_day + timedelta(days=day), first_number_day))
                             first_number_day = (first_number_day + 1, 1)[first_number_day > 6]
                             if len(worker_list) != 0:
                                 for worker in worker_list:
                                     for date in date_list:
                                         cursor.execute(DataBase.sql_insert_workers_report(),
-                                        (date[0], worker[0], 0, 0, 0))
+                                                       (date[0], worker[0], 0, 0, 0))
         except:
             pass
 
@@ -315,4 +321,13 @@ class TableWorkers(QTableWidget):
                 cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
                 date_list = cursor.fetchall()
                 for date in date_list:
-                    cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0, 0, 0, ''))
+                    cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0, 0, 0, '', 0))
+
+    def get_change_list_gild(self):
+        self.wg.combo_gild.clear()
+        if self.wg.combo_role.currentIndex() > 0:
+            current_role = self.wg.combo_role.currentText()
+            current_list = self.wg.dict_gilds.get(current_role)
+        else:
+            current_list = ['цех/отдел']
+        self.wg.combo_gild.addItems(current_list)
