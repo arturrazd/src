@@ -11,7 +11,7 @@ class DataBase:
 
     @staticmethod
     def sql_read_workers_1():
-        return "SELECT w.second_name, w.first_name, w.last_name, r.role, g.gild, w.id FROM workers w \
+        return "SELECT  w.id, w.table_number, w.second_name, w.first_name, w.last_name, r.role, g.gild FROM workers w \
                 JOIN roles r ON w.role = r.id  \
                 JOIN gilds g ON w.gild = g.id  \
                 ORDER BY w.second_name, w.first_name, w.last_name"
@@ -23,11 +23,14 @@ class DataBase:
 
     @staticmethod
     def sql_add_worker():
-        return "INSERT INTO workers (second_name, first_name, last_name, role, gild) values (%s,%s,%s,%s,%s) RETURNING id"
+        return "INSERT INTO workers (second_name, first_name, last_name, role, gild, table_number) \
+                VALUES (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM gilds g WHERE g.gild = %s AND g.role =%s), 1000)),%s) \
+                RETURNING id"
 
     @staticmethod
     def sql_edit_worker():
-        return "UPDATE workers SET (second_name, first_name, last_name, role, gild) = (%s,%s,%s,%s,%s) WHERE id = %s"
+        return "UPDATE workers SET (second_name, first_name, last_name, role, gild, table_number) = \
+                (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM gilds g WHERE g.gild = %s AND g.role =%s), 1000)), %s) WHERE id = %s"
 
     @staticmethod
     def sql_del_worker():

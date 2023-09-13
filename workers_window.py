@@ -1,6 +1,9 @@
 import calendar
 import locale
 from datetime import datetime, timedelta
+
+from PyQt5.QtGui import QIntValidator, QColor
+
 from styles import AlignDelegate
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QSize
@@ -32,6 +35,13 @@ class WorkersWindow(QWidget):
         self.btn_refresh.setStyleSheet(Styles.workers_btn())
         self.btn_refresh.clicked.connect(self.table_workers.upd_table)
         self.btn_refresh.clicked.connect(self.upd_lables)
+        # табельный номер
+        self.input_tabel_number = QLineEdit(self)
+        onlyInt = QIntValidator()
+        onlyInt.setRange(0, 1000000)
+        self.input_tabel_number.setValidator(onlyInt)
+        self.input_tabel_number.setFixedSize(input_btn_size)
+        self.input_tabel_number.setStyleSheet(Styles.workers_input())
         # фамилия
         self.input_sname = QLineEdit(self)
         self.input_sname.setFixedSize(input_btn_size)
@@ -50,7 +60,7 @@ class WorkersWindow(QWidget):
         self.combo_role.addItems(combo_list_role)
         self.combo_role.setFixedSize(input_btn_size)
         self.combo_role.setStyleSheet(Styles.workers_combo())
-        self.combo_role.activated.connect(self.get_change_list_gild)
+        self.combo_role.activated.connect(self.table_workers.get_change_list_gild)
         # цех/служба
         self.combo_gild = QComboBox(self)
         self.get_list_gild()
@@ -96,6 +106,7 @@ class WorkersWindow(QWidget):
         self.btn_edit.setCursor(Qt.PointingHandCursor)
         self.table_workers.setCursor(Qt.PointingHandCursor)
 
+        self.input_tabel_number.setToolTip('табельный номер')
         self.input_sname.setToolTip('фамилия')
         self.input_fname.setToolTip('имя')
         self.input_lname.setToolTip('отчество')
@@ -117,6 +128,7 @@ class WorkersWindow(QWidget):
         self.button_layout.addWidget(self.btn_del)
         self.button_layout.setSpacing(10)
 
+        self.input_layout.addWidget(self.input_tabel_number)
         self.input_layout.addWidget(self.input_sname)
         self.input_layout.addWidget(self.input_fname)
         self.input_layout.addWidget(self.input_lname)
@@ -137,6 +149,7 @@ class WorkersWindow(QWidget):
     # обнулить поля ввода
     def upd_lables(self):
         self.id.setText('')
+        self.input_tabel_number.setText('')
         self.input_sname.setText('')
         self.input_fname.setText('')
         self.input_lname.setText('')
@@ -145,32 +158,28 @@ class WorkersWindow(QWidget):
         self.combo_gild.addItems(['цех/отдел'])
 
     def add_worker(self):
-        index_role = self.combo_role.currentIndex()
-        index_gild = self.combo_gild.currentIndex()
-        try:
-            with connect(**DataBase.config()) as conn:
-                conn.autocommit = True
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_add_worker(), (self.input_sname.text(), self.input_fname.text(),
-                                                               self.input_lname.text(), index_role,
-                                                               index_gild))
-                    insert_id = cursor.fetchone()
-
-            self.table_workers.add_worker_report(insert_id)
-            self.table_workers.upd_table()
-        except:
-            pass
+        name_gild = (self.combo_gild.currentText(), '-')[self.combo_gild.currentIndex() == -1]
+        with connect(**DataBase.config()) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.sql_add_worker(), (self.input_sname.text(), self.input_fname.text(),
+                                                           self.input_lname.text(), self.combo_role.currentIndex(),
+                                                           name_gild, self.combo_role.currentIndex(),
+                                                           int(self.input_tabel_number.text())))
+                insert_id = cursor.fetchone()
+        self.table_workers.add_worker_report(insert_id)
+        self.table_workers.upd_table()
 
     def edit_worker(self):
-        index_role = self.combo_role.currentIndex()
-        index_gild = self.combo_gild.currentIndex()
+        name_gild = (self.combo_gild.currentText(), '-')[self.combo_gild.currentIndex() == -1]
         try:
             with connect(**DataBase.config()) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_edit_worker(), (self.input_sname.text(), self.input_fname.text(),
-                                                                self.input_lname.text(), index_role,
-                                                                index_gild, int(self.id.text())))
+                    cursor.execute(DataBase.sql_edit_worker(), ((self.input_sname.text(), self.input_fname.text(),
+                                                               self.input_lname.text(), self.combo_role.currentIndex(),
+                                                                 name_gild, self.combo_role.currentIndex(),
+                                                                 self.input_tabel_number.text(), int(self.id.text()))))
         except:
             pass
         self.table_workers.upd_table()
@@ -213,30 +222,22 @@ class WorkersWindow(QWidget):
         except:
             pass
 
-    def get_change_list_gild(self):
-        self.combo_gild.clear()
-        if self.combo_role.currentIndex() > 0:
-            current_role = self.combo_role.currentText()
-            current_list = self.dict_gilds.get(current_role)
-        else:
-            current_list = ['цех/отдел']
-        self.combo_gild.addItems(current_list)
-
 
 # класс - таблица
 class TableWorkers(QTableWidget):
     def __init__(self, wg):
         self.wg = wg
         super().__init__(wg)
-        self.setColumnCount(7)
-        self.setColumnHidden(6, True)  # скрываем 7 столбец с идентификатором работника
+        self.setColumnCount(8)
+        self.setColumnHidden(1, True)  # скрываем 2 столбец с идентификатором работника
         self.verticalHeader().hide()
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(6, QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(7, QHeaderView.Stretch)
         self.horizontalHeader().setSectionsClickable(False)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setStyleSheet(Styles.table_workers())
@@ -252,26 +253,33 @@ class TableWorkers(QTableWidget):
 
     # обработка щелчка мыши по таблице
     def click_table(self, row, col):  # row - номер строки, col - номер столбца
-        self.wg.id.setText(self.item(row, 6).text())
-        self.wg.input_sname.setText(self.item(row, 1).text().strip())
-        self.wg.input_fname.setText(self.item(row, 2).text().strip())
-        self.wg.input_lname.setText(self.item(row, 3).text().strip())
-        self.wg.combo_role.setCurrentText(self.item(row, 4).text())
+        self.wg.id.setText(self.item(row, 1).text())
+        self.wg.input_tabel_number.setText(self.item(row, 2).text().strip())
+        self.wg.input_sname.setText(self.item(row, 3).text().strip())
+        self.wg.input_fname.setText(self.item(row, 4).text().strip())
+        self.wg.input_lname.setText(self.item(row, 5).text().strip())
+        self.wg.combo_role.setCurrentText(self.item(row, 6).text())
         self.get_change_list_gild()
-        self.wg.combo_gild.setCurrentText(self.item(row, 5).text())
+        self.wg.combo_gild.setCurrentText(self.item(row, 7).text())
 
     # обновление таблицы
     def upd_table(self):
+        current_row = self.currentRow()
+        current_col = self.currentColumn()
         self.clear()
         self.setRowCount(0)
         self.setHorizontalHeaderLabels(
-            ['№', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Цех/Отдел'])
+            ['№','', 'Табельный \nномер', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Цех/Отдел'])
+        # try:
         with connect(**DataBase.config()) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(DataBase.sql_read_workers_1())
                 rows = cursor.fetchall()
                 delegate = AlignDelegate(self)
                 self.setItemDelegateForColumn(0, delegate)
+                self.setItemDelegateForColumn(2, delegate)
+                self.setItemDelegateForColumn(6, delegate)
+                self.setItemDelegateForColumn(7, delegate)
                 i = 0
                 for row in rows:
                     self.setRowCount(self.rowCount() + 1)
@@ -279,9 +287,14 @@ class TableWorkers(QTableWidget):
                     j = 1
                     for elem in row:
                         self.setItem(i, j, QTableWidgetItem(str(elem).strip()))
+                        if j in [3, 4, 5]:
+                            self.item(i, j).setForeground(QColor(200, 150, 0, 255))
                         j += 1
                     self.setRowHeight(i, 26)
                     i += 1
+        self.setCurrentCell(current_row, current_col)
+        # except:
+        #     pass
 
     def add_month(self):
         try:
