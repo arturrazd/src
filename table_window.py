@@ -17,6 +17,11 @@ class TableWindow(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.list_role = list()
+        self.list_gild = list()
+        self.dict_gilds = dict()
+        self.list_teams = list()
+
         self.main_btn_size = QSize(30, 30)
         self.input_btn_size = QSize(150, 25)
         self.icon_size = QSize(15, 15)
@@ -26,6 +31,7 @@ class TableWindow(QWidget):
         self.combo_time_of_day = None
         self.btn_insert_description = None
         self.input_decription = None
+        self.combo_teams = None
         self.combo_place = None
         self.combo_status = None
         self.combo_hours = None
@@ -41,22 +47,25 @@ class TableWindow(QWidget):
         self.shortcut = QShortcut(QKeySequence("Del"), self)
         self.shortcut.activated.connect(self.table_report.clear_report)
         self.table_report.setCursor(Qt.PointingHandCursor)
+
         # фильтр по должности
         self.combo_role = QComboBox(self, objectName='combo_role')
-        self.list_role = self.get_list_role()
-        self.combo_role.addItems(self.list_role)
+        self.combo_role.addItems(['должность'] + self.get_list_role())
         self.combo_role.setFixedSize(self.input_btn_size)
         self.combo_role.setStyleSheet(Styles.workers_combo())
+        self.combo_role.activated.connect(self.table_report.get_change_list_gild)
         self.combo_role.activated.connect(self.table_report.set_filter_table)
         self.combo_role.activated.connect(self.table_report.check_table)
+
         # фильтр по отделу/цеху
         self.combo_gild = QComboBox(self, objectName='combo_gild')
-        self.list_gild = self.get_list_gild()
-        self.combo_gild.addItems(self.list_gild)
+        self.get_list_gild()
+        self.combo_gild.addItems(['специальность'])
         self.combo_gild.setFixedSize(self.input_btn_size)
         self.combo_gild.setStyleSheet(Styles.workers_combo())
         self.combo_gild.activated.connect(self.table_report.set_filter_table)
         self.combo_gild.activated.connect(self.table_report.check_table)
+
         # выбор года
         self.combo_years = QComboBox(self, objectName='combo_years')
         self.list_years = list(self.get_list_dates().keys())
@@ -67,6 +76,7 @@ class TableWindow(QWidget):
         self.combo_years.activated.connect(self.change_list_month)
         self.combo_years.activated.connect(self.table_report.set_filter_table)
         self.combo_years.activated.connect(self.table_report.bild_table)
+
         # выбор месяца
         self.combo_month = QComboBox(self, objectName='combo_month')
         self.dict_month = self.get_list_dates()
@@ -78,6 +88,7 @@ class TableWindow(QWidget):
         self.combo_month.setStyleSheet(Styles.workers_combo())
         self.combo_month.activated.connect(self.table_report.set_filter_table)
         self.combo_month.activated.connect(self.table_report.bild_table)
+
         # кнопка "обновить"
         self.btn_refresh = QPushButton('', self)
         self.btn_refresh.setIcon(QtGui.QIcon('refresh.png'))
@@ -85,6 +96,7 @@ class TableWindow(QWidget):
         self.btn_refresh.setFixedSize(self.main_btn_size)
         self.btn_refresh.setStyleSheet(Styles.workers_btn())
         self.btn_refresh.clicked.connect(self.table_report.check_table)
+
         # кнопка "копировать"
         self.btn_copy = QPushButton('', self)
         self.btn_copy.setIcon(QtGui.QIcon('copy_report.png'))
@@ -92,6 +104,7 @@ class TableWindow(QWidget):
         self.btn_copy.setFixedSize(self.main_btn_size)
         self.btn_copy.setStyleSheet(Styles.workers_btn())
         self.btn_copy.clicked.connect(self.table_report.copy_report)
+
         # кнопка "вставить"
         self.btn_paste = QPushButton('', self)
         self.btn_paste.setIcon(QtGui.QIcon('paste_report.png'))
@@ -99,6 +112,7 @@ class TableWindow(QWidget):
         self.btn_paste.setFixedSize(self.main_btn_size)
         self.btn_paste.setStyleSheet(Styles.workers_btn())
         self.btn_paste.clicked.connect(self.table_report.paste_report)
+
         # кнопка "очистить"
         self.btn_clear = QPushButton('', self)
         self.btn_clear.setIcon(QtGui.QIcon('delete_report.png'))
@@ -142,11 +156,14 @@ class TableWindow(QWidget):
         self.page_layout.addWidget(self.table_report)
         self.page_layout.addLayout(self.panel_layout)
         self.page_layout.setSpacing(10)
-
         self.setLayout(self.page_layout)
 
+        self.get_list_teams()
+
     def show_panel(self):
+
         self.clear_panel()
+
         # отработанные часы
         self.combo_hours = QComboBox(self, objectName='combo_hours')
         self.combo_hours.setFixedSize(self.input_btn_size)
@@ -154,6 +171,7 @@ class TableWindow(QWidget):
         [self.combo_hours.addItem(str(i) + 'ч.') for i in range(1, 25)]
         self.combo_hours.setStyleSheet(Styles.workers_combo())
         self.combo_hours.activated.connect(self.table_report.edit_report)
+
         # статус работника (полный день, отгул, отпуск, больничный)
         self.combo_status = QComboBox(self, objectName='combo_status')
         list_status = ['полный день', 'б/с', 'отпуск', 'больничный', 'прогул']
@@ -161,20 +179,20 @@ class TableWindow(QWidget):
         self.combo_status.setFixedSize(self.input_btn_size)
         self.combo_status.setStyleSheet(Styles.workers_combo())
         self.combo_status.activated.connect(self.table_report.edit_report)
+
         #  поле ввода примечания
         self.input_decription = QTextEdit(self)
         self.input_decription.setFixedSize(QSize(150, 200))
         self.input_decription.setStyleSheet(Styles.input_text())
         self.input_decription.setAlignment(Qt.AlignTop)
         self.input_decription.setPlaceholderText('введите перечень работ.')
+
         # кнопка "записать примечание"
         self.btn_insert_description = QPushButton('записать', self)
         self.btn_insert_description.setIconSize(self.icon_size)
         self.btn_insert_description.setFixedSize(self.input_btn_size)
         self.btn_insert_description.setStyleSheet(Styles.workers_btn())
         self.btn_insert_description.clicked.connect(self.table_report.edit_report)
-
-        self.edit_layout.addWidget(self.combo_hours)
 
         if self.table_report.show_panel_mode == 1:
             # смена (день/ночь)
@@ -184,40 +202,48 @@ class TableWindow(QWidget):
             self.combo_time_of_day.setFixedSize(self.input_btn_size)
             self.combo_time_of_day.setStyleSheet(Styles.workers_combo())
             self.combo_time_of_day.activated.connect(self.table_report.edit_report)
-            self.edit_layout.addWidget(self.combo_time_of_day)
+
+            # бригада
+            self.combo_teams = QComboBox(self, objectName='combo_teams')
+            self.combo_teams.setFixedSize(self.input_btn_size)
+            self.combo_teams.addItems(self.list_teams)
+            self.combo_teams.setStyleSheet(Styles.workers_combo())
+            self.combo_teams.activated.connect(self.table_report.edit_report)
+
             # оценка
             self.combo_rating = QComboBox(self, objectName='combo_rating')
             self.combo_rating.setFixedSize(self.input_btn_size)
             self.combo_rating.addItems(['оценка', '1', '2', '3'])
             self.combo_rating.setStyleSheet(Styles.workers_combo())
             self.combo_rating.activated.connect(self.table_report.edit_report)
-            self.edit_layout.addWidget(self.combo_rating)
+
             # место работы (НУФ/Чапаева)
             self.combo_place = QComboBox(self, objectName='combo_place')
             self.combo_place.addItems(['НУФ', 'Чапаева'])
             self.combo_place.setFixedSize(self.input_btn_size)
             self.combo_place.setStyleSheet(Styles.workers_combo())
             self.combo_place.activated.connect(self.table_report.edit_report)
-            self.edit_layout.addWidget(self.combo_place)
+
             # выбор типа расписания рабочих дней
             self.combo_type_scheduler = QComboBox(self, objectName='combo_type_scheduler')
             self.combo_type_scheduler.addItems(['ДД-НН-ОВ', 'ДН-ОВ', 'очистить'])
             self.combo_type_scheduler.setFixedSize(self.input_btn_size)
             self.combo_type_scheduler.setStyleSheet(Styles.workers_combo())
             self.combo_type_scheduler.activated.connect(self.table_report.edit_report)
-            self.scheduler_layout.addWidget(self.combo_type_scheduler)
+
             # кнопка "сгенерировать расписание"
             self.btn_generate_scheduler = QPushButton('сгенерировать', self, objectName='btn_generate_scheduler')
             self.btn_generate_scheduler.setIconSize(self.icon_size)
             self.btn_generate_scheduler.setFixedSize(self.input_btn_size)
             self.btn_generate_scheduler.setStyleSheet(Styles.workers_btn())
             self.btn_generate_scheduler.clicked.connect(self.table_report.generate_schedules)
-            self.scheduler_layout.addWidget(self.btn_generate_scheduler)
+
             #  подсказки
             self.combo_rating.setToolTip('оценка')
             self.combo_place.setToolTip('площадка')
             self.combo_type_scheduler.setToolTip('тип расписания')
             self.combo_time_of_day.setToolTip('смена')
+
             #  курсоры
             self.combo_rating.setCursor(Qt.PointingHandCursor)
             self.combo_place.setCursor(Qt.PointingHandCursor)
@@ -225,9 +251,18 @@ class TableWindow(QWidget):
             self.btn_generate_scheduler.setCursor(Qt.PointingHandCursor)
             self.combo_time_of_day.setCursor(Qt.PointingHandCursor)
 
+            self.edit_layout.addWidget(self.combo_time_of_day)
+            self.edit_layout.addWidget(self.combo_teams)
+            self.edit_layout.addWidget(self.combo_rating)
+            self.edit_layout.addWidget(self.combo_place)
+            self.scheduler_layout.addWidget(self.combo_type_scheduler)
+            self.scheduler_layout.addWidget(self.btn_generate_scheduler)
+
+        self.edit_layout.addWidget(self.combo_hours)
         self.edit_layout.addWidget(self.combo_status)
         self.edit_layout.addWidget(self.input_decription)
         self.edit_layout.addWidget(self.btn_insert_description)
+
 
         # курсоры
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
@@ -255,9 +290,9 @@ class TableWindow(QWidget):
             with connect(**DataBase.config()) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_role())
-                    list_role_out = ['Все сотрудники'] + [item for t in cursor.fetchall() for item in t if
-                                                          isinstance(item, str)]
-                    return list_role_out
+                    self.list_role = cursor.fetchall()
+                    combo_list_role = [role[1] for role in self.list_role]
+                    return combo_list_role
         except:
             pass
 
@@ -266,9 +301,12 @@ class TableWindow(QWidget):
             with connect(**DataBase.config()) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_gild())
-                    list_role_out = ['Все цеха/отделы'] + [item for t in cursor.fetchall() for item in t if
-                                                           isinstance(item, str)]
-                    return list_role_out
+                    self.list_gild = cursor.fetchall()
+                    for role in self.list_role:
+                        self.dict_gilds[role[1]] = []
+                        for gild in self.list_gild:
+                            if role[0] == gild[2]:
+                                self.dict_gilds[role[1]].append(gild[1])
         except:
             pass
 
@@ -286,6 +324,17 @@ class TableWindow(QWidget):
                             year = date[0]
                         all_date_dict[str(date[0])][str(date[1])] = str(date[2])
                     return all_date_dict
+        except:
+            pass
+
+    def get_list_teams(self):
+        try:
+            with connect(**DataBase.config()) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(DataBase.sql_list_teams())
+                    list_teams_tmp = cursor.fetchall()
+                    self.list_teams = [str(team[1]) + ': ' + team[2] for team in list_teams_tmp]
+                    self.list_teams[0] = 'бригада'
         except:
             pass
 
@@ -309,6 +358,8 @@ class TableWindow(QWidget):
             self.combo_type_scheduler.deleteLater()
         if self.findChild(QPushButton, name='btn_generate_scheduler') is not None:
             self.btn_generate_scheduler.deleteLater()
+        if self.findChild(QComboBox, name='combo_teams') is not None:
+            self.combo_teams.deleteLater()
 
         self.edit_layout.removeWidget(self.input_decription)
         self.edit_layout.removeWidget(self.btn_insert_description)
@@ -363,9 +414,9 @@ class TableReport(QTableWidget):
             months = {'Январь': '1', 'Февраль': '2', 'Март': '3', 'Апрель': '4', 'Май': '5', 'Июнь': '6',
                       'Июль': '7', 'Август': '8', 'Сентябрь': '9', 'Октябрь': '10', 'Ноябрь': '11', 'Декабрь': '12'}
             combo_role_text = self.wg.combo_role.currentText()
-            self.filter_role = ("'" + combo_role_text + "'", 'rs.role')[combo_role_text == 'Все сотрудники']
+            self.filter_role = ("'" + combo_role_text + "'", 'rs.role')[combo_role_text == 'должность']
             combo_gild_text = self.wg.combo_gild.currentText()
-            self.filter_gild = ("'" + combo_gild_text + "'", 'gd.gild')[combo_gild_text == 'Все цеха/отделы']
+            self.filter_gild = ("'" + combo_gild_text + "'", 'gd.gild')[combo_gild_text == 'специальность']
             self.filter_year = self.wg.combo_years.currentText()
             self.filter_month = months[self.wg.combo_month.currentText()]
 
@@ -383,7 +434,10 @@ class TableReport(QTableWidget):
                         if id_report != report[7]:
                             new_reports_dict[report[7]] = dict()
                             id_report = report[7]
-                        new_reports_dict[report[7]][report[8]] = {'role': report[13], 'hour': report[4], 'rating': report[5], 'status': report[6], 'place': report[10], 'time_of_day': report[11], 'description': report[12]}
+                        new_reports_dict[report[7]][report[8]] = {'role': report[13], 'hour': report[4],
+                                                                  'rating': report[5], 'status': report[6],
+                                                                  'place': report[10], 'time_of_day': report[11],
+                                                                  'description': report[12], 'team': report[14]}
                     return new_reports_dict
         except:
             pass
@@ -423,6 +477,8 @@ class TableReport(QTableWidget):
                 self.wg.combo_place.setCurrentIndex(self.reports_dict[id_worker][id_date]['place'])
             if self.wg.findChild(QComboBox, name='combo_time_of_day') is not None:
                 self.wg.combo_time_of_day.setCurrentIndex(self.reports_dict[id_worker][id_date]['time_of_day'])
+            if self.wg.findChild(QComboBox, name='combo_teams') is not None:
+                self.wg.combo_teams.setCurrentIndex(self.reports_dict[id_worker][id_date]['team'])
             self.wg.input_decription.setPlainText(self.reports_dict[id_worker][id_date]['description'])
 
     def copy_report(self):
@@ -476,8 +532,12 @@ class TableReport(QTableWidget):
                 time_of_day = self.wg.combo_time_of_day.currentIndex()
             else:
                 time_of_day = 0
+            if self.wg.findChild(QComboBox, name='combo_teams') is not None:
+                team = self.wg.combo_teams.currentIndex()
+            else:
+                time_of_day = 0
             description = self.wg.input_decription.toPlainText()
-            self.write_report(hour, rating, status, place, time_of_day, description, id_worker, id_date)
+            self.write_report(hour, rating, status, place, time_of_day, description, id_worker, id_date, team)
 
     def clear_report(self):
         hour = 0
@@ -489,15 +549,16 @@ class TableReport(QTableWidget):
             place = 0
             time_of_day = 0
             description = ''
-            self.write_report(hour, rating, status, place, time_of_day, description, id_worker, id_date)
+            team = 0
+            self.write_report(hour, rating, status, place, time_of_day, description, team, id_worker, id_date)
 
-    def write_report(self, hour, rating, status, place, time_of_day, description, id_worker, id_date):
+    def write_report(self, hour, rating, status, place, time_of_day, description, id_worker, id_date, team):
         try:
             with connect(**DataBase.config()) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_edit_table(),
-                                   (hour, rating, status, place, time_of_day, description, id_worker, id_date))
+                                   (hour, rating, status, place, time_of_day, description, team, id_worker, id_date))
             self.check_table()
         except:
             pass
@@ -612,6 +673,7 @@ class TableReport(QTableWidget):
         data_place = data['place']
         data_time_of_day = data['time_of_day']
         data_description = data['description']
+        data_team = data['team']
 
         worker_hours = QtWidgets.QLabel(('', str(data_hour))[data_hour != 0])
         worker_hours.setFont(QFont("CalibriLight", 12, QtGui.QFont.Bold))
@@ -701,3 +763,12 @@ class TableReport(QTableWidget):
                 work_day = (work_day + 1, 1)[work_day == work_type[type_scheduler]]
         self.check_table()
         pass
+
+    def get_change_list_gild(self):
+        self.wg.combo_gild.clear()
+        if self.wg.combo_role.currentIndex() > 0:
+            current_role = self.wg.combo_role.currentText()
+            self.wg.list_gild = ['специальность'] + self.wg.dict_gilds.get(current_role)
+        else:
+            self.wg.list_gild = ['специальность']
+        self.wg.combo_gild.addItems(self.wg.list_gild)

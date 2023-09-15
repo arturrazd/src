@@ -41,6 +41,10 @@ class DataBase:
         return "SELECT id, role FROM roles ORDER BY id"
 
     @staticmethod
+    def sql_list_teams():
+        return "SELECT id, team, brigadier FROM teams ORDER BY id"
+
+    @staticmethod
     def sql_list_gild():
         return "SELECT id, gild, role FROM gilds ORDER BY id"
 
@@ -62,7 +66,7 @@ class DataBase:
     @staticmethod
     def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_gild):
         return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status, \
-                        wr.worker_id, wr.day_id, w.gild, wr.place, wr.time_of_day, wr.description, w.role \
+                        wr.worker_id, wr.day_id, w.gild, wr.place, wr.time_of_day, wr.description, w.role, wr.team \
                 FROM workers_report wr \
                 join workers w on w.id = wr.worker_id \
                 join date_report dr on dr.id = wr.day_id \
@@ -76,7 +80,7 @@ class DataBase:
 
     @staticmethod
     def sql_edit_table():
-        return "UPDATE workers_report SET (work_hour, rating, status, place, time_of_day, description) = (%s,%s,%s,%s,%s,%s) \
+        return "UPDATE workers_report SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,%s) \
                 WHERE worker_id = %s AND day_id = %s \
                 RETURNING day_id, worker_id"
 

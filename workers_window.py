@@ -19,13 +19,14 @@ class WorkersWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.list_gild = None
         main_btn_size = QSize(30, 30)
         input_btn_size = QSize(150, 30)
         icon_size = QSize(15, 15)
 
-        self.dict_gilds = dict()
         self.list_role = list()
+        self.list_gild = list()
+        self.dict_gilds = dict()
+
         self.table_workers = TableWorkers(self)
         # кнопка "обновить"
         self.btn_refresh = QPushButton('', self)
@@ -64,7 +65,7 @@ class WorkersWindow(QWidget):
         # цех/служба
         self.combo_gild = QComboBox(self)
         self.get_list_gild()
-        self.combo_gild.addItem('цех/отдел')
+        self.combo_gild.addItem('специальность')
         self.combo_gild.setFixedSize(input_btn_size)
         self.combo_gild.setStyleSheet(Styles.workers_combo())
         # идентификатор (скрыт)
@@ -111,7 +112,7 @@ class WorkersWindow(QWidget):
         self.input_fname.setToolTip('имя')
         self.input_lname.setToolTip('отчество')
         self.combo_role.setToolTip('должность')
-        self.combo_gild.setToolTip('цех/отдел')
+        self.combo_gild.setToolTip('специальность')
 
         self.page_layout = QHBoxLayout()
         self.page_layout.setContentsMargins(0, 0, 0, 0)
