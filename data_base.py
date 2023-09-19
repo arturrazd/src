@@ -11,26 +11,26 @@ class DataBase:
 
     @staticmethod
     def sql_read_workers_1():
-        return "SELECT  w.id, w.table_number, w.second_name, w.first_name, w.last_name, r.role, g.gild FROM workers w \
+        return "SELECT  w.id, w.table_number, w.second_name, w.first_name, w.last_name, r.role, g.guild FROM workers w \
                 JOIN roles r ON w.role = r.id  \
-                JOIN gilds g ON w.gild = g.id  \
+                JOIN guilds g ON w.guild = g.id  \
                 ORDER BY w.second_name, w.first_name, w.last_name"
 
     @staticmethod
     def sql_read_workers_2():
-        return "SELECT id, second_name, first_name, last_name, role, gild FROM workers \
+        return "SELECT id, second_name, first_name, last_name, role, guild FROM workers \
                 ORDER BY second_name, first_name, last_name"
 
     @staticmethod
     def sql_add_worker():
-        return "INSERT INTO workers (second_name, first_name, last_name, role, gild, table_number) \
-                VALUES (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM gilds g WHERE g.gild = %s AND g.role =%s), 1000)),%s) \
+        return "INSERT INTO workers (second_name, first_name, last_name, role, guild, table_number) \
+                VALUES (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM guilds g WHERE g.guild = %s AND g.role =%s), 1000)),%s) \
                 RETURNING id"
 
     @staticmethod
     def sql_edit_worker():
-        return "UPDATE workers SET (second_name, first_name, last_name, role, gild, table_number) = \
-                (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM gilds g WHERE g.gild = %s AND g.role =%s), 1000)), %s) WHERE id = %s"
+        return "UPDATE workers SET (second_name, first_name, last_name, role, guild, table_number) = \
+                (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM guilds g WHERE g.guild = %s AND g.role =%s), 1000)), %s) WHERE id = %s"
 
     @staticmethod
     def sql_del_worker():
@@ -45,8 +45,8 @@ class DataBase:
         return "SELECT id, team, brigadier FROM teams ORDER BY id"
 
     @staticmethod
-    def sql_list_gild():
-        return "SELECT id, gild, role FROM gilds ORDER BY id"
+    def sql_list_guild():
+        return "SELECT id, guild, role FROM guilds ORDER BY id"
 
     @staticmethod
     def sql_read_date_report():
@@ -64,16 +64,16 @@ class DataBase:
         return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status, place, time_of_day, description, team) values (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
 
     @staticmethod
-    def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_gild):
+    def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_guild):
         return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status, \
-                        wr.worker_id, wr.day_id, w.gild, wr.place, wr.time_of_day, wr.description, w.role, wr.team \
+                        wr.worker_id, wr.day_id, w.guild, wr.place, wr.time_of_day, wr.description, w.role, wr.team \
                 FROM workers_report wr \
                 join workers w on w.id = wr.worker_id \
                 join date_report dr on dr.id = wr.day_id \
                 join roles rs on w.role = rs.id \
-                join gilds gd on w.gild = gd.id \
+                join guilds gd on w.guild = gd.id \
                 where rs.role = " + filter_worker_role + "\
-                and gd.gild = " + filter_worker_gild + "\
+                and gd.guild = " + filter_worker_guild + "\
                 and extract(year from dr.date::timestamp) = " + date_year + "\
                 and extract(month from dr.date::timestamp) = " + date_month + "\
                 ORDER BY w.second_name, w.first_name, w.last_name, dr.date"

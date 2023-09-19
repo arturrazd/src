@@ -20,6 +20,7 @@ class MainWindow(QMainWindow):
         # создание кнопок панели бокового меню
         self.btn_1 = QPushButton('табель', self)
         self.btn_1.clicked.connect(self.table_window.table_report.check_table)
+        self.btn_1.clicked.connect(self.table_window.table_report.click_cell)
         self.btn_2 = QPushButton('сотрудники', self)
         self.btn_3 = QPushButton('отчеты', self)
         # всплывающие подсказки для кнопок

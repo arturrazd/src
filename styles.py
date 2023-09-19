@@ -66,7 +66,7 @@ class Styles:
     def workers_btn():
         return "QPushButton \
                             { \
-                            background-color: rgb(60, 60, 60); \
+                            background-color: rgb(35, 35, 35); \
                             border: none; \
                             border-radius: 0px; \
                             font-family: Calibri Light; \
@@ -76,7 +76,7 @@ class Styles:
                             } \
                 QPushButton:hover \
                             { \
-                            background-color: rgb(80, 80, 80); \
+                            background-color: rgb(30, 30, 30); \
                             border: 0px outset rgb(70, 70, 70); \
                             color: rgb(180, 180, 180); \
                             } \
@@ -89,7 +89,7 @@ class Styles:
     @staticmethod
     def workers_input():
         return "QLineEdit { \
-                            background-color: rgb(60, 60, 60); \
+                            background-color: rgb(35, 35, 35); \
                             border: none; \
                             font-family: Calibri Light; \
                             font: 15px; \
@@ -99,7 +99,7 @@ class Styles:
                             } \
                 QLineEdit:hover \
                             { \
-                            background-color: rgb(80, 80, 80); \
+                            background-color: rgb(30, 30, 30); \
                             } \
                 QLineEdit:focus \
                             { \
@@ -177,8 +177,6 @@ class Styles:
                             background: rgb(45, 45, 45); \
                             }"
 
-
-
     @staticmethod
     def ver_scrollbar():
         return "QScrollBar \
@@ -213,7 +211,7 @@ class Styles:
     def workers_combo():
         return "QComboBox \
                         { \
-                        background-color: rgb(60, 60, 60); \
+                        background-color: rgb(35, 35, 35); \
                         border: none; \
                         font-family: Calibri Light; \
                         font: 15px; \
@@ -222,7 +220,7 @@ class Styles:
                         } \
                 QComboBox::hover \
                         { \
-                        background-color: rgb(80, 80, 80); \
+                        background-color: rgb(30, 30, 30) \
                         } \
                 QComboBox:focus \
                         { \
@@ -278,7 +276,7 @@ class Styles:
     def input_text():
         return "QTextEdit \
                             { \
-                            background-color: rgb(60, 60, 60); \
+                            background-color: rgb(35, 35, 35); \
                             border: none; \
                             font-family: Calibri Light; \
                             font: 15px; \
@@ -287,7 +285,7 @@ class Styles:
                             } \
                 QTextEdit::hover \
                         { \
-                        background-color: rgb(80, 80, 80); \
+                        background-color: rgb(30, 30, 30); \
                         } \
                 QTextEdit:focus \
                             { \
