@@ -65,13 +65,15 @@ class DataBase:
 
     @staticmethod
     def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_guild):
-        return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status, \
-                        wr.worker_id, wr.day_id, w.guild, wr.place, wr.time_of_day, wr.description, w.role, wr.team \
-                FROM workers_report wr \
-                join workers w on w.id = wr.worker_id \
-                join date_report dr on dr.id = wr.day_id \
-                join roles rs on w.role = rs.id \
-                join guilds gd on w.guild = gd.id \
+        return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status,\
+                        wr.worker_id, wr.day_id, w.guild, wr.place, wr.time_of_day, wr.description, w.role,\
+                        t.team, t.brigadier\
+                FROM workers_report wr\
+                join workers w on w.id = wr.worker_id\
+                join date_report dr on dr.id = wr.day_id\
+                join roles rs on w.role = rs.id\
+                join guilds gd on w.guild = gd.id\
+                join teams t on wr.team = t.id\
                 where rs.role = " + filter_worker_role + "\
                 and gd.guild = " + filter_worker_guild + "\
                 and extract(year from dr.date::timestamp) = " + date_year + "\
@@ -80,8 +82,10 @@ class DataBase:
 
     @staticmethod
     def sql_edit_table():
-        return "UPDATE workers_report SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,%s) \
-                WHERE worker_id = %s AND day_id = %s \
+        return "UPDATE workers_report\
+                SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,(SELECT id FROM teams t WHERE t.team = %s))\
+                WHERE worker_id = %s\
+                AND day_id = %s \
                 RETURNING day_id, worker_id"
 
     @staticmethod
@@ -89,3 +93,8 @@ class DataBase:
         return "SELECT DISTINCT DATE_PART('year', date)::int AS years, DATE_PART('month', date)::int AS month, TO_CHAR(date, 'TMMonth') as month_name\
                 FROM date_report dr \
                 ORDER BY years, month"
+
+    @staticmethod
+    def sql_read_text_permit():
+        return "SELECT block, line, text FROM permit_text \
+                ORDER BY block, line"

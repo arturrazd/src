@@ -35,7 +35,7 @@ class WorkersWindow(QWidget):
         self.btn_refresh.setFixedSize(main_btn_size)
         self.btn_refresh.setStyleSheet(Styles.workers_btn())
         self.btn_refresh.clicked.connect(self.table_workers.upd_table)
-        self.btn_refresh.clicked.connect(self.upd_lables)
+        self.btn_refresh.clicked.connect(self.upd_labels)
         # табельный номер
         self.input_tabel_number = QLineEdit(self)
         onlyInt = QIntValidator()
@@ -152,7 +152,7 @@ class WorkersWindow(QWidget):
         self.setLayout(self.page_layout)
 
     # обнулить поля ввода
-    def upd_lables(self):
+    def upd_labels(self):
         self.id.setText('')
         self.input_tabel_number.setText('')
         self.input_sname.setText('')
@@ -253,7 +253,6 @@ class TableWorkers(QTableWidget):
         self.cellClicked.connect(self.click_table)  # установить обработчик щелча мыши в таблице
         self.setMinimumSize(500, 500)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.add_month()
         self.upd_table()
 
     # обработка щелчка мыши по таблице
@@ -326,7 +325,7 @@ class TableWorkers(QTableWidget):
                                 for worker in worker_list:
                                     for date in date_list:
                                         cursor.execute(DataBase.sql_insert_workers_report(),
-                                                       (date[0], worker[0], 0, 0, 0))
+                                                       (date[0], worker[0], 0, 0, 0, 0, 0, '', 0))
         except:
             pass
 
@@ -340,7 +339,6 @@ class TableWorkers(QTableWidget):
                 date_list = cursor.fetchall()
                 for date in date_list:
                     cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0, 0, 0, '', 0))
-
     def get_change_list_guild(self):
         self.wg.combo_guild.clear()
         if self.wg.combo_role.currentIndex() > 0:

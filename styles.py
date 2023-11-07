@@ -84,7 +84,15 @@ class Styles:
                             { \
                             background-color: rgb(30, 30, 30); \
                             border-style: inset; \
-                            }"
+                            } \
+                QToolTip \
+                        { \
+                        font-size: 15px; \
+                        font-family: CalibriLight; \
+                        color: white; \
+                        background-color: black; \
+                        border: 0px solid gray; \
+                        }"
 
     @staticmethod
     def workers_input():

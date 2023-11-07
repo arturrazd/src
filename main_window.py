@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QStackedLayout
 from workers_window import WorkersWindow
 from table_window import TableWindow
+from reports_window import ReportsWindow
 from styles import Styles
 
 
@@ -16,6 +17,7 @@ class MainWindow(QMainWindow):
         self.main_btn_size = QSize(200, 50)
         self.workers_window = WorkersWindow()
         self.table_window = TableWindow()
+        self.reports_window = ReportsWindow()
 
         # создание кнопок панели бокового меню
         self.btn_1 = QPushButton('табель', self)
@@ -55,7 +57,7 @@ class MainWindow(QMainWindow):
         self.page_layout.addLayout(self.stack_layout)
         self.stack_layout.addWidget(self.table_window)
         self.stack_layout.addWidget(self.workers_window)
-
+        self.stack_layout.addWidget(self.reports_window)
 
         self.page_layout.setContentsMargins(0, 0, 0, 0)
 
