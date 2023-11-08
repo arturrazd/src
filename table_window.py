@@ -455,6 +455,10 @@ class TableWindow(QWidget):
 
     def show_permit(self):
         self.permit = PermitHtml()
+        for date in self.table_report.dates:
+            if self.table_report.id_date in date:
+                self.permit.date = ' ' + str(date[1])[-2:] + '.' + str(date[1])[5:7] + '.' + str(date[1])[:4]
+        self.permit.load_html()
         self.permit.show()
 
 
@@ -462,6 +466,7 @@ class TableWindow(QWidget):
 class TableReport(QTableWidget):
     def __init__(self, wg):
         super().__init__(wg)
+        self.dates = None
         self.col = None
         self.row = None
         self.id_worker = None
@@ -722,7 +727,7 @@ class TableReport(QTableWidget):
         old_position_scroll = scroll.value() / (scroll.maximum() or 1)
         self.setColumnCount(0)
         self.setRowCount(0)
-        dates = self.get_dates(self.filter_year, self.filter_month)
+        self.dates = self.get_dates(self.filter_year, self.filter_month)
         self.reports_dict = self.get_reports()
 
         fio_dict = {report[7]: report[0] + ' ' + report[1][:1] + '. ' + report[2][:1] + '.' for report in
@@ -730,14 +735,14 @@ class TableReport(QTableWidget):
 
         dates_dict = {1: 'пн', 2: 'вт', 3: 'ср', 4: 'чт', 5: 'пт', 6: 'сб', 7: 'вс'}
         i = 0
-        for i in range(len(dates) + 3):
+        for i in range(len(self.dates) + 3):
             self.setColumnCount(self.columnCount() + 1)
             self.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
-            self.setHorizontalHeaderItem(i, QTableWidgetItem(str(i - 2) + '\n' + dates_dict[dates[i - 3][2]]))
+            self.setHorizontalHeaderItem(i, QTableWidgetItem(str(i - 2) + '\n' + dates_dict[self.dates[i - 3][2]]))
         self.setRowCount(self.rowCount() + 1)
 
         i = 3
-        for date in dates:
+        for date in self.dates:
             self.setItem(0, i, QTableWidgetItem(str(date[0])))
             i += 1
 
@@ -882,11 +887,10 @@ class TableReport(QTableWidget):
     def generate_schedules(self):
         self.init_item_table()
         id_date = int(self.item(0, self.col).text())
-        dates = self.get_dates(self.filter_year, self.filter_month)
         day_work = 0
         type_work = [[1, 1, 2, 2, 0, 0], [1, 2, 0, 0]]
         type_scheduler = self.wg.combo_type_scheduler.currentIndex()
-        for date in dates:
+        for date in self.dates:
             if date[0] >= id_date:
                 self.copy_report()
                 self.buff_copy_time_of_day = type_work[type_scheduler][day_work]
@@ -900,8 +904,7 @@ class TableReport(QTableWidget):
         self.init_item_table()
         id_date = int(self.item(0, self.col).text())
         self.set_filter_table()
-        dates = self.get_dates(self.filter_year, self.filter_month)
-        for date in dates:
+        for date in self.dates:
             if date[0] >= id_date:
                 self.copy_report()
                 self.buff_copy_time_of_day = 0
@@ -937,42 +940,19 @@ class PermitHtml(QWidget):
         self.web_view = QWebEngineView(self)
         self.web_view.setGeometry(0, 0, 800, 600)
         self.dict_text = self.get_text_permit()
-
+        self.date = ''
         self.load_html()
 
     def load_html(self):
-        # html_content = "<html><body><h1>Hello, World!</h1></body></html>"
-        html_content = "<html> \
-                            <body> \
-                                <table style='border: 1px solid rgb(0, 0, 0);'> \
-                                    <thead> \
-                                        <tr> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>№ п/п</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Цех/участок</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Объект ремонта</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Технологические операции</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Продолжительность</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Отметка о выполнении</th> \
-                                            <th style='border: 1px solid rgb(0, 0, 0);'>Примечание</th> \
-                                        </tr> \
-                                    </thead> \
-                                <tbody> \
-                                        <tr> \
-                                          <td style='border: 1px solid rgb(0, 0, 0);'> \
-                                          </td> \
-                                          <td style='border: 1px solid rgb(0, 0, 0);'> \
-                                          </td> \
-                                          <td style='border: 1px solid rgb(0, 0, 0);'> \
-                                          </td> \
-                                          <td style='border: 1px solid rgb(0, 0, 0);'> \
-                                          </td> \
-                                          <td style='border: 1px solid rgb(0, 0, 0);'> \
-                                          </td> \
-                                        </tr> \
-                                    </tbody> \
-                                </table> \
-                            <body> \
-                    <html>"
+        html_content = "<html> <body> <header>"
+        if len(self.dict_text['1']) > 0:
+            for value in self.dict_text['1'].values():
+                if value == 'Дата:':
+                    html_content += '<p>' + value + self.date + '</p>'
+                else:
+                    html_content += '<p>' + value + '</p>'
+
+        html_content += "</html> </body> </header>"
 
         self.web_view.setHtml(html_content)
 
