@@ -98,3 +98,8 @@ class DataBase:
     def sql_read_text_permit():
         return "SELECT block, line, text FROM permit_text \
                 ORDER BY block, line"
+
+    @staticmethod
+    def sql_read_settings():
+        return "SELECT value FROM settings \
+                WHERE name = %s"

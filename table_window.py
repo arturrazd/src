@@ -130,7 +130,7 @@ class TableWindow(QWidget):
         self.btn_refresh.setIconSize(self.icon_size)
         self.btn_refresh.setFixedSize(self.main_btn_size)
         self.btn_refresh.setStyleSheet(Styles.workers_btn())
-        self.btn_refresh.clicked.connect(self.table_report.check_table)
+        self.btn_refresh.clicked.connect(self.table_report.bild_table)
         self.btn_refresh.setCursor(Qt.PointingHandCursor)
 
         # кнопка "копировать"
@@ -454,10 +454,34 @@ class TableWindow(QWidget):
         self.table_report.check_table()
 
     def show_permit(self):
+        #   Создаем объект наряда.
         self.permit = PermitHtml()
-        for date in self.table_report.dates:
-            if self.table_report.id_date in date:
-                self.permit.date = ' ' + str(date[1])[-2:] + '.' + str(date[1])[5:7] + '.' + str(date[1])[:4]
+
+        #   Определяем руководителя и производителя работ.
+        try:
+            with connect(**DataBase.config()) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(DataBase.sql_read_settings(), ('manager_electric',))  # Читаем из БД руководителя.
+                    self.permit.manager_electric = ' ' + str(cursor.fetchall()[0][0])
+                    cursor.execute(DataBase.sql_read_settings(), ('producer_electric',))  # Читаем из БД производителя.
+                    self.permit.producer_electric = ' ' + str(cursor.fetchall()[0][0])
+        except:
+            pass
+
+        #   Определяем дату в наряде в соответствии с выделенной ячейкой.
+        #   "id_date" текущей ячейки обновляется каждый раз по клику мыши в click_table.
+        for date in self.table_report.dates:  # Перебираем строки дат в текущем месяце.
+            if self.table_report.id_date in date:  # Ищем id_date в dates.
+                self.permit.date = ' ' + date[1].strftime('%d.%m.%Y')
+
+        #   Определяем исполнителя работ. Берем значение ячейки второго столбца текущей строки.
+        self.permit.worker = ' ' + self.table_report.item(self.table_report.row, 1).text()
+
+        #   Определяем смену работ
+        time_of_day_dict = {0: '', 1: ' дневная', 2: ' ночная'}
+        #   Читаем текущее значение индекса у соответствующего combo_box.
+        self.permit.time_of_day = time_of_day_dict[self.combo_time_of_day.currentIndex()]
+
         self.permit.load_html()
         self.permit.show()
 
@@ -634,6 +658,7 @@ class TableReport(QTableWidget):
             self.click_cell()
 
     def edit_report(self):
+        self.init_item_table()
         if self.row > 0 and self.col > 2:
             hour = self.wg.combo_hours.currentIndex()
             if self.wg.findChild(QComboBox, name='combo_rating') is not None:
@@ -660,6 +685,7 @@ class TableReport(QTableWidget):
             self.click_cell()
 
     def clear_report(self):
+        self.init_item_table()
         hour = 0
         rating = 0
         status = 0
@@ -886,9 +912,10 @@ class TableReport(QTableWidget):
 
     def generate_schedules(self):
         self.init_item_table()
+        col = self.currentColumn()
         id_date = int(self.item(0, self.col).text())
         day_work = 0
-        type_work = [[1, 1, 2, 2, 0, 0], [1, 2, 0, 0]]
+        type_work = ((1, 1, 2, 2, 0, 0), (1, 2, 0, 0))
         type_scheduler = self.wg.combo_type_scheduler.currentIndex()
         for date in self.dates:
             if date[0] >= id_date:
@@ -898,10 +925,13 @@ class TableReport(QTableWidget):
                 self.col += 1
                 day_work = (day_work + 1, 0)[day_work == len(type_work[type_scheduler]) - 1]
         self.check_table()
+        self.setCurrentCell(self.row, col)
+        self.init_item_table()
         self.click_cell()
 
     def clear_schedules(self):
         self.init_item_table()
+        col = self.currentColumn()
         id_date = int(self.item(0, self.col).text())
         self.set_filter_table()
         for date in self.dates:
@@ -911,6 +941,8 @@ class TableReport(QTableWidget):
                 self.paste_report()
                 self.col += 1
         self.check_table()
+        self.setCurrentCell(self.row, col)
+        self.init_item_table()
         self.click_cell()
 
     def get_change_list_guild(self):
@@ -923,7 +955,6 @@ class TableReport(QTableWidget):
         self.wg.combo_guild.addItems(self.wg.list_guild)
 
     def click_cell(self):
-        self.init_item_table()
         if self.row > 0:
             self.cellClicked.emit(self.row, self.col)
 
@@ -941,18 +972,58 @@ class PermitHtml(QWidget):
         self.web_view.setGeometry(0, 0, 800, 600)
         self.dict_text = self.get_text_permit()
         self.date = ''
+        self.manager_electric = ''
+        self.producer_electric = ''
+        self.worker = ''
+        self.time_of_day = ''
         self.load_html()
 
     def load_html(self):
-        html_content = "<html> <body> <header>"
+        html_content = "<html><body>"
         if len(self.dict_text['1']) > 0:
             for value in self.dict_text['1'].values():
-                if value == 'Дата:':
-                    html_content += '<p>' + value + self.date + '</p>'
+                if value == 'Ответственный руководитель работ:':
+                    html_content += '<p>' + value + self.manager_electric + '</p>'
+                elif value == 'Ответственный производитель работ:':
+                    html_content += '<p>' + value + self.producer_electric + '</p>'
+                elif value == 'Дата:':
+                    html_content += '<p><center>' + value + self.date + '</center></p>'
+                elif value == 'Исполнитель:':
+                    html_content += '<p>' + value + self.worker + '</p>'
+                elif value == 'Смена:':
+                    html_content += '<p>' + value + self.time_of_day + '</p>'
                 else:
                     html_content += '<p>' + value + '</p>'
 
-        html_content += "</html> </body> </header>"
+        if len(self.dict_text['2']) > 0:
+            html_content += '<table border="1">' \
+                                '<thead>' \
+                                    '<tr>' \
+                                        '<th>№ п/п</th>' \
+                                        '<th>Цех участок</th>' \
+                                        '<th>Объект ремонта</th>' \
+                                        '<th>Технологические операции</th>' \
+                                        '<th>Продолжительность</th>' \
+                                        '<th>Отметка о выполнении</th>' \
+                                        '<th>Отметка о выполнении</th>' \
+                                    '</tr>' \
+                                '</thead>' \
+                                '<tbody>'
+            line = 1
+            for value in self.dict_text['2'].values():
+                html_content += '<tr>' \
+                                    '<td align="center">' + str(line) + '</td>' \
+                                    '<td align="center"></td>' \
+                                    '<td align="center"></td>' \
+                                    '<td align="left">' + value + '</td>' \
+                                    '<td align="center"></td>' \
+                                    '<td align="center"></td>' \
+                                    '<td align="center"></td>'
+                line += 1
+
+            html_content += '</table>'
+
+        html_content += "</body></html>"
 
         self.web_view.setHtml(html_content)
 

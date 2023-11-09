@@ -300,35 +300,6 @@ class TableWorkers(QTableWidget):
         # except:
         #     pass
 
-    def add_month(self):
-        try:
-            with connect(**DataBase.config()) as conn:
-                conn.autocommit = True
-                with conn.cursor() as cursor:
-                    cur_year = datetime.now().date().year
-                    cur_month = datetime.now().date().month
-                    cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
-                    date_list = cursor.fetchall()
-                    if len(date_list) == 0:
-                        monthrange = calendar.monthrange(cur_year, cur_month)
-                        cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
-                        date_list = cursor.fetchall()
-                        cursor.execute(DataBase.sql_read_workers_2())
-                        worker_list = cursor.fetchall()
-                        first_number_day = monthrange[0] + 1
-                        first_day = datetime.today().replace(day=1)
-                        for day in range(monthrange[1]):
-                            cursor.execute(DataBase.sql_insert_date_report(),
-                                           (first_day + timedelta(days=day), first_number_day))
-                            first_number_day = (first_number_day + 1, 1)[first_number_day > 6]
-                            if len(worker_list) != 0:
-                                for worker in worker_list:
-                                    for date in date_list:
-                                        cursor.execute(DataBase.sql_insert_workers_report(),
-                                                       (date[0], worker[0], 0, 0, 0, 0, 0, '', 0))
-        except:
-            pass
-
     def add_worker_report(self, new_worker_id):
         with connect(**DataBase.config()) as conn:
             conn.autocommit = True
