@@ -1,14 +1,14 @@
 import json
+import os
 import time
 import locale
 from datetime import datetime
-from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import Qt, QSize, QUrl
+from PyQt5 import QtWidgets, QtCore, QtGui, QtPrintSupport
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QColor, QKeySequence, QPixmap
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import *
 from psycopg2 import connect
-
 from data_base import DataBase
 from styles import Styles
 from styles import AlignDelegate
@@ -389,7 +389,7 @@ class TableWindow(QWidget):
 
     def get_list_role(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_role())
                     self.list_role = cursor.fetchall()
@@ -400,7 +400,7 @@ class TableWindow(QWidget):
 
     def get_list_guild(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_guild())
                     self.list_guild = cursor.fetchall()
@@ -414,7 +414,7 @@ class TableWindow(QWidget):
 
     def get_list_dates(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     all_date_dict = dict()
                     cursor.execute(DataBase.sql_list_all_date())
@@ -431,7 +431,7 @@ class TableWindow(QWidget):
 
     def get_list_teams(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_teams())
                     list_teams_tmp = cursor.fetchall()
@@ -459,7 +459,7 @@ class TableWindow(QWidget):
 
         #   Определяем руководителя и производителя работ.
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_read_settings(), ('manager_electric',))  # Читаем из БД руководителя.
                     self.permit.manager_electric = ' ' + str(cursor.fetchall()[0][0])
@@ -469,7 +469,7 @@ class TableWindow(QWidget):
             pass
 
         #   Определяем дату в наряде в соответствии с выделенной ячейкой.
-        #   "id_date" текущей ячейки обновляется каждый раз по клику мыши в click_table.
+        #   "Id_date" текущей ячейки обновляется каждый раз по клику мыши в click_table.
         for date in self.table_report.dates:  # Перебираем строки дат в текущем месяце.
             if self.table_report.id_date in date:  # Ищем id_date в dates.
                 self.permit.date = ' ' + date[1].strftime('%d.%m.%Y')
@@ -482,7 +482,11 @@ class TableWindow(QWidget):
         #   Читаем текущее значение индекса у соответствующего combo_box.
         self.permit.time_of_day = time_of_day_dict[self.combo_time_of_day.currentIndex()]
 
+        #   Определяем текст дополнительных работ из примечания к рабочему дню (input_decription).
+        self.permit.description = self.input_decription.toPlainText().strip('--').split(sep='--')
+
         self.permit.load_html()
+
         self.permit.show()
 
 
@@ -510,10 +514,20 @@ class TableReport(QTableWidget):
         self.buff_copy_status = None
         self.change_panel = False
 
+        self.login = ''
+        self.password = ''
+        self.path_to_file = os.path.join("C:\\Users", os.environ["username"], "filter.json")
+
         self.init_item_table()
 
-        with open('filter.json', 'r', encoding='utf-8') as f:
-            self.filter_text = json.load(f)
+        if os.path.isfile(self.path_to_file):
+            with open(self.path_to_file, 'r', encoding='utf-8') as f:
+                self.filter_text = json.load(f)
+        else:
+            data = {"filterRole": "rs.role", "filterGuild": "gd.guild"}
+            with open(self.path_to_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f)
+                self.filter_text = {"filterRole": "rs.role", "filterGuild": "gd.guild"}
 
         self.show_panel_mode = 0
         self.wg = wg
@@ -553,11 +567,11 @@ class TableReport(QTableWidget):
             filter_write = {'filterRole': self.filter_role,
                             'filterGuild': self.filter_guild}
 
-            with open('filter.json', 'w', encoding="utf-8") as outfile:
+            with open(self.path_to_file, 'w', encoding="utf-8") as outfile:
                 json.dump(filter_write, outfile, ensure_ascii=False)
 
     def get_reports(self):
-        with connect(**DataBase.config()) as conn:
+        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     DataBase.sql_read_workers_report(self.filter_role, self.filter_year, self.filter_month,
@@ -578,7 +592,7 @@ class TableReport(QTableWidget):
 
     def get_dates(self, year, month):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_read_date_report(), (year, month,))
                     return tuple(cursor.fetchall())
@@ -701,7 +715,7 @@ class TableReport(QTableWidget):
 
     def write_report(self, hour, rating, status, place, time_of_day, description, id_worker, id_date, team):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_edit_table(),
@@ -832,9 +846,13 @@ class TableReport(QTableWidget):
             lbl_descript = QtWidgets.QLabel('')
 
         # верх - право
-        place = QtWidgets.QLabel(('', 'чп')[data_place == 1])
-        place.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
-        place.setStyleSheet('color: rgb(150, 150, 150);')
+        rating = QtWidgets.QLabel(('', str(data_rating))[data_rating != 0])
+        rating.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
+        dict_color_rating = {0: '',
+                             1: 'color: rgb(200, 0, 0);',
+                             2: 'color: rgb(150, 150, 0);',
+                             3: 'color: rgb(0, 150, 0);'}
+        rating.setStyleSheet(dict_color_rating.get(data_rating))
 
         # центр - лево, низ - центр (пустышка)
         lbl_empty = QtWidgets.QLabel('')
@@ -846,11 +864,11 @@ class TableReport(QTableWidget):
 
         # центр - право
         team = QtWidgets.QLabel(('', str(data_team))[data_team != 0])
-        team.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
-        team.setStyleSheet('color: rgb(100, 100, 100);')
+        team.setFont(QFont("CalibriLight", 6, QtGui.QFont.Normal))
+        team.setStyleSheet('color: rgb(150, 150, 150);')
 
         # низ - лево
-        dict_data_status = {0: '', 1: 'б/с', 2: 'отпуск', 3: 'бл', 4: 'пр'}
+        dict_data_status = {0: '', 1: 'бс', 2: 'от', 3: 'бл', 4: 'пр'}
         dict_color_status = {0: '',
                              1: 'color: rgb(255, 255, 100);',
                              2: 'color: rgb(0, 255, 0);',
@@ -861,50 +879,41 @@ class TableReport(QTableWidget):
         status.setStyleSheet(dict_color_status.get(data_status))
 
         # низ - право
-        rating = QtWidgets.QLabel(('', str(data_rating))[data_rating != 0])
-        rating.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
-        dict_color_rating = {0: '',
-                             1: 'color: rgb(200, 0, 0);',
-                             2: 'color: rgb(150, 150, 0);',
-                             3: 'color: rgb(0, 150, 0);'}
-        rating.setStyleSheet(dict_color_rating.get(data_rating))
-        # rating.setStyleSheet('color: rgb(150, 150, 150);')
+        place = QtWidgets.QLabel(('', 'чп')[data_place == 1])
+        place.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
+        place.setStyleSheet('color: rgb(100, 255, 255);')
 
-        cell_layout = QVBoxLayout()
+        cell_layout = QGridLayout()
+
         cell_layout.setContentsMargins(0, 0, 0, 0)
+        time_of_day.setContentsMargins(0, 0, 0, 0)
+        lbl_descript.setContentsMargins(0, 0, 0, 0)
+        place.setContentsMargins(0, 0, 0, 0)
+        lbl_empty.setContentsMargins(0, 0, 0, 0)
+        hours.setContentsMargins(0, 0, 0, 0)
+        team.setContentsMargins(0, 0, 0, 0)
+        status.setContentsMargins(0, 0, 0, 0)
+        lbl_empty.setContentsMargins(0, 0, 0, 0)
+        rating.setContentsMargins(0, 0, 0, 0)
 
-        upper_layout = QHBoxLayout()
-        upper_layout.setContentsMargins(0, 0, 0, 0)
-        upper_layout.addStretch(0)
-        upper_layout.addWidget(time_of_day)
-        upper_layout.addStretch(0)
-        upper_layout.addWidget(lbl_descript)
-        upper_layout.addStretch(0)
-        upper_layout.addWidget(place)
-        upper_layout.addStretch(0)
+        cell_layout.setColumnStretch(0, 1)
+        cell_layout.setColumnStretch(1, 1)
+        cell_layout.setColumnStretch(2, 1)
 
-        center_layout = QHBoxLayout()
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.addStretch(0)
-        center_layout.addWidget(lbl_empty)
-        center_layout.addStretch(0)
-        center_layout.addWidget(hours)
-        center_layout.addStretch(0)
-        center_layout.addWidget(team)
-        center_layout.addStretch(0)
+        cell_layout.setAlignment(Qt.AlignHCenter)
 
-        lower_layout = QHBoxLayout()
-        lower_layout.setContentsMargins(0, 0, 0, 0)
-        lower_layout.addWidget(status)
-        lower_layout.addStretch(0)
-        lower_layout.addWidget(lbl_empty)
-        lower_layout.addStretch(0)
-        lower_layout.addWidget(rating)
-        lower_layout.addStretch(0)
+        cell_layout.addWidget(time_of_day, 0, 0, Qt.AlignCenter)
+        cell_layout.addWidget(lbl_descript, 0, 1, Qt.AlignCenter)
+        cell_layout.addWidget(rating, 0, 2, Qt.AlignCenter)
 
-        cell_layout.addLayout(upper_layout)
-        cell_layout.addLayout(center_layout)
-        cell_layout.addLayout(lower_layout)
+        cell_layout.addWidget(lbl_empty, 1, 0, Qt.AlignCenter)
+        cell_layout.addWidget(hours, 1, 1, Qt.AlignCenter)
+        cell_layout.addWidget(team, 1, 2, Qt.AlignCenter)
+
+        cell_layout.addWidget(place, 2, 0, Qt.AlignCenter)
+        cell_layout.addWidget(lbl_empty, 2, 1, Qt.AlignCenter)
+        cell_layout.addWidget(status, 2, 2, Qt.AlignCenter)
+
         cell_layout.setSpacing(0)
         widget = QWidget()
         widget.setLayout(cell_layout)
@@ -966,70 +975,113 @@ class TableReport(QTableWidget):
 class PermitHtml(QWidget):
     def __init__(self):
         super().__init__()
-        self.setGeometry(100, 100, 800, 600)
+        # self.setGeometry(100, 100, 800, 600)
         self.setWindowTitle('Наряд на выполнение работ')
         self.web_view = QWebEngineView(self)
-        self.web_view.setGeometry(0, 0, 800, 600)
-        self.dict_text = self.get_text_permit()
+        self.web_view.setGeometry(0, 0, 1000, 900)
+        self.dict_text = self.get_text_permit()  # Читаем из БД текстовку для наряда электриков. Получаем 3 словаря.
+        # 1 - шапка, 2 - таблица, 3 - подпись.
         self.date = ''
         self.manager_electric = ''
         self.producer_electric = ''
         self.worker = ''
         self.time_of_day = ''
+        self.description = ''
         self.load_html()
 
+        self.buttonPreview = QtWidgets.QPushButton('Просмотр', self)
+        self.buttonPreview.clicked.connect(self.handle_preview)
+        self.buttonPrint = QtWidgets.QPushButton('Печать', self)
+        self.buttonPrint.clicked.connect(self.handle_print)
+        layout = QtWidgets.QGridLayout(self)
+        layout.addWidget(self.web_view, 0, 0, 1, 2)
+        layout.addWidget(self.buttonPreview, 1, 0)
+        layout.addWidget(self.buttonPrint, 1, 1)
+
+    #   Собираем html страницу наряда.
     def load_html(self):
+        line = 1
         html_content = "<html><body>"
+        html_content += '<font size = "5" face = "Calibri Light">'
         if len(self.dict_text['1']) > 0:
+            html_content += '<p>'
             for value in self.dict_text['1'].values():
                 if value == 'Ответственный руководитель работ:':
-                    html_content += '<p>' + value + self.manager_electric + '</p>'
+                    html_content += value + self.manager_electric + '<br>'
                 elif value == 'Ответственный производитель работ:':
-                    html_content += '<p>' + value + self.producer_electric + '</p>'
+                    html_content += value + self.producer_electric + '<br>'
                 elif value == 'Дата:':
                     html_content += '<p><center>' + value + self.date + '</center></p>'
                 elif value == 'Исполнитель:':
-                    html_content += '<p>' + value + self.worker + '</p>'
+                    html_content += value + self.worker + '<br>'
                 elif value == 'Смена:':
-                    html_content += '<p>' + value + self.time_of_day + '</p>'
+                    html_content += value + self.time_of_day + '<br>'
+                else:
+                    html_content += value + '<br>'
+            html_content += '</p>'
+        html_content += '<table border="1">'
+
+        html_content += '<thead>'
+        html_content += '<th>№ п/п</th>' \
+                        '<th>Цех участок</th>' \
+                        '<th>Объект ремонта</th>' \
+                        '<th>Технологические операции</th>' \
+                        '<th>Продолжительность</th>' \
+                        '<th>Отметка о выполнении</th>' \
+                        '<th>Отметка о выполнении</th>'
+        html_content += '</thead>'
+
+        html_content += '<tbody>'
+
+        if len(self.dict_text['2']) > 0:
+            for value in self.dict_text['2'].values():
+                html_content += '<tr>'
+                html_content += '<td align="center">' + str(line) + '</td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>' \
+                                '<td align="left">' + value + '</td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>'
+                html_content += '</tr>'
+                line += 1
+
+        if len(self.description) > 0:
+            for value in self.description:
+                html_content += '<tr>'
+                html_content += '<td align="center">' + str(line) + '</td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>' \
+                                '<td align="left">' + '<em>' + '<b>' + value + '</b>' + '</em>' + '</td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>' \
+                                '<td align="center"></td>'
+                html_content += '</tr>'
+                line += 1
+
+        html_content += '</tbody>'
+        html_content += '</table>'
+
+        if len(self.dict_text['3']) > 0:
+            for value in self.dict_text['3'].values():
+                if value == 'Исполнитель:':
+                    html_content += '<p>' + value + ' _________________ ' + '/' + self.worker + '/' + '</p>'
+                elif value == 'Ответственный руководитель работ:':
+                    manager_electric = (' '.join(self.manager_electric.split()[-2:]), self.manager_electric)[self.manager_electric == '']
+                    html_content += '<p>' + value + ' _________________ ' + '/' + manager_electric + '/' + '</p>'
+                elif value == 'Ответственный производитель работ:':
+                    producer_electric = (' '.join(self.producer_electric.split()[-2:]), self.producer_electric)[self.producer_electric == '']
+                    html_content += '<p>' + value + ' _________________ ' + '/' + producer_electric + '/' + '</p>'
                 else:
                     html_content += '<p>' + value + '</p>'
 
-        if len(self.dict_text['2']) > 0:
-            html_content += '<table border="1">' \
-                                '<thead>' \
-                                    '<tr>' \
-                                        '<th>№ п/п</th>' \
-                                        '<th>Цех участок</th>' \
-                                        '<th>Объект ремонта</th>' \
-                                        '<th>Технологические операции</th>' \
-                                        '<th>Продолжительность</th>' \
-                                        '<th>Отметка о выполнении</th>' \
-                                        '<th>Отметка о выполнении</th>' \
-                                    '</tr>' \
-                                '</thead>' \
-                                '<tbody>'
-            line = 1
-            for value in self.dict_text['2'].values():
-                html_content += '<tr>' \
-                                    '<td align="center">' + str(line) + '</td>' \
-                                    '<td align="center"></td>' \
-                                    '<td align="center"></td>' \
-                                    '<td align="left">' + value + '</td>' \
-                                    '<td align="center"></td>' \
-                                    '<td align="center"></td>' \
-                                    '<td align="center"></td>'
-                line += 1
-
-            html_content += '</table>'
-
-        html_content += "</body></html>"
+        html_content += "</font></body></html>"
 
         self.web_view.setHtml(html_content)
 
     def get_text_permit(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     dict_text = dict()
                     cursor.execute(DataBase.sql_read_text_permit())
@@ -1043,3 +1095,23 @@ class PermitHtml(QWidget):
                     return dict_text
         except:
             pass
+
+    def handle_print(self):
+        printer = QtPrintSupport.QPrinter(QtPrintSupport.QPrinter.HighResolution)
+        dialog = QtPrintSupport.QPrintDialog(printer, self)
+        if dialog.exec_() == QtPrintSupport.QPrintDialog.Accepted:
+            self.handle_paint_request(printer)
+
+    def handle_preview(self):
+        dialog = QtPrintSupport.QPrintPreviewDialog()
+        dialog.paintRequested.connect(self.handle_paint_request)
+        dialog.exec_()
+
+    def handle_paint_request(self, printer):
+        painter = QtGui.QPainter(printer)
+        painter.setViewport(self.web_view.rect())
+        painter.setWindow(self.web_view.rect())
+        painter.setViewport(500, 500, 3000, 2000)
+        painter.setWindow(-100, -150, 200, 200)
+        self.web_view.render(painter)
+        painter.end()

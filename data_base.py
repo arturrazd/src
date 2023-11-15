@@ -1,11 +1,21 @@
 class DataBase:
+
+    login = ''
+    password = ''
+
     @staticmethod
-    def config():
+    def sql_read_users():
+        return "SELECT usename FROM pg_catalog.pg_user \
+                WHERE usename like 'col_%' \
+                ORDER BY usename"
+
+    @staticmethod
+    def config(user, password):
         return {
             "host": "localhost",
             "dbname": "CollectiveDB",
-            "user": "collective_engineer",
-            "password": "coll",
+            "user": user,
+            "password": password,
             "port": "5432"
         }
 

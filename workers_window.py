@@ -26,6 +26,8 @@ class WorkersWindow(QWidget):
         self.list_role = list()
         self.list_guild = list()
         self.dict_guilds = dict()
+        self.login = ''
+        self.password = ''
 
         self.table_workers = TableWorkers(self)
         # кнопка "обновить"
@@ -164,7 +166,7 @@ class WorkersWindow(QWidget):
 
     def add_worker(self):
         name_guild = (self.combo_guild.currentText(), '-')[self.combo_guild.currentIndex() == -1]
-        with connect(**DataBase.config()) as conn:
+        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
             conn.autocommit = True
             with conn.cursor() as cursor:
                 cursor.execute(DataBase.sql_add_worker(), (self.input_sname.text(), self.input_fname.text(),
@@ -178,7 +180,7 @@ class WorkersWindow(QWidget):
     def edit_worker(self):
         name_guild = (self.combo_guild.currentText(), '-')[self.combo_guild.currentIndex() == -1]
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_edit_worker(), ((self.input_sname.text(), self.input_fname.text(),
@@ -192,7 +194,7 @@ class WorkersWindow(QWidget):
     def del_worker(self):
         try:
             ids = int(self.id.text())
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 conn.autocommit = True
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_del_worker(), (ids,))
@@ -202,7 +204,7 @@ class WorkersWindow(QWidget):
 
     def get_list_role(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_role())
                     list_role = cursor.fetchall()
@@ -215,7 +217,7 @@ class WorkersWindow(QWidget):
 
     def get_list_guild(self):
         try:
-            with connect(**DataBase.config()) as conn:
+            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_list_guild())
                     self.list_guild = cursor.fetchall()
@@ -275,7 +277,7 @@ class TableWorkers(QTableWidget):
         self.setHorizontalHeaderLabels(
             ['№','', 'Табельный \nномер', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Цех/Отдел'])
         # try:
-        with connect(**DataBase.config()) as conn:
+        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(DataBase.sql_read_workers_1())
                 rows = cursor.fetchall()
@@ -301,7 +303,7 @@ class TableWorkers(QTableWidget):
         #     pass
 
     def add_worker_report(self, new_worker_id):
-        with connect(**DataBase.config()) as conn:
+        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
             conn.autocommit = True
             with conn.cursor() as cursor:
                 cur_year = datetime.now().date().year
