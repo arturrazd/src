@@ -454,17 +454,15 @@ class TableWindow(QWidget):
         self.table_report.check_table()
 
     def show_permit(self):
-        #   Создаем объект наряда.
-        self.permit = PermitHtml()
 
         #   Определяем руководителя и производителя работ.
         try:
             with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
                 with conn.cursor() as cursor:
                     cursor.execute(DataBase.sql_read_settings(), ('manager_electric',))  # Читаем из БД руководителя.
-                    self.permit.manager_electric = ' ' + str(cursor.fetchall()[0][0])
+                    p_manager_electric = ' ' + str(cursor.fetchall()[0][0])
                     cursor.execute(DataBase.sql_read_settings(), ('producer_electric',))  # Читаем из БД производителя.
-                    self.permit.producer_electric = ' ' + str(cursor.fetchall()[0][0])
+                    p_producer_electric = ' ' + str(cursor.fetchall()[0][0])
         except:
             pass
 
@@ -472,22 +470,33 @@ class TableWindow(QWidget):
         #   "Id_date" текущей ячейки обновляется каждый раз по клику мыши в click_table.
         for date in self.table_report.dates:  # Перебираем строки дат в текущем месяце.
             if self.table_report.id_date in date:  # Ищем id_date в dates.
-                self.permit.date = ' ' + date[1].strftime('%d.%m.%Y')
+                p_date = ' ' + date[1].strftime('%d.%m.%Y')
 
         #   Определяем исполнителя работ. Берем значение ячейки второго столбца текущей строки.
-        self.permit.worker = ' ' + self.table_report.item(self.table_report.row, 1).text()
+        p_worker = ' ' + self.table_report.item(self.table_report.row, 1).text()
 
         #   Определяем смену работ
         time_of_day_dict = {0: '', 1: ' дневная', 2: ' ночная'}
         #   Читаем текущее значение индекса у соответствующего combo_box.
-        self.permit.time_of_day = time_of_day_dict[self.combo_time_of_day.currentIndex()]
+        p_time_of_day = time_of_day_dict[self.combo_time_of_day.currentIndex()]
 
         #   Определяем текст дополнительных работ из примечания к рабочему дню (input_decription).
-        self.permit.description = self.input_decription.toPlainText().strip('--').split(sep='--')
+        p_description = self.input_decription.toPlainText().strip('--').split(sep='--')
 
-        self.permit.load_html()
+        printer = QtPrintSupport.QPrinter(QtPrintSupport.QPrinter.PrinterResolution)
+        printer.setOutputFormat(QtPrintSupport.QPrinter.PdfFormat)
+        printer.setPaperSize(QtPrintSupport.QPrinter.A4)
+        printer.setOrientation(QtPrintSupport.QPrinter.Portrait)
+        printer.setOutputFileName('filename.pdf')
 
-        self.permit.show()
+        doc = QtGui.QTextDocument()
+
+        #   Создаем объект наряда.
+        self.permit = PermitHtml(p_date, p_manager_electric, p_producer_electric, p_worker, p_time_of_day, p_description)
+
+        doc.setHtml(self.permit.html_content)
+        doc.setPageSize(QtCore.QSizeF(printer.pageRect().size()))
+        doc.print_(printer)
 
 
 # класс - таблица
@@ -972,112 +981,100 @@ class TableReport(QTableWidget):
         self.row = self.currentRow()
 
 
-class PermitHtml(QWidget):
-    def __init__(self):
+class PermitHtml():
+    def __init__(self, dat, me, pe, w, td, des):
         super().__init__()
-        # self.setGeometry(100, 100, 800, 600)
-        self.setWindowTitle('Наряд на выполнение работ')
-        self.web_view = QWebEngineView(self)
-        self.web_view.setGeometry(0, 0, 1000, 900)
         self.dict_text = self.get_text_permit()  # Читаем из БД текстовку для наряда электриков. Получаем 3 словаря.
         # 1 - шапка, 2 - таблица, 3 - подпись.
-        self.date = ''
-        self.manager_electric = ''
-        self.producer_electric = ''
-        self.worker = ''
-        self.time_of_day = ''
-        self.description = ''
+        self.date = dat
+        self.manager_electric = me
+        self.producer_electric = pe
+        self.worker = w
+        self.time_of_day = td
+        self.description = des
+        self.html_content = ''
         self.load_html()
-
-        self.buttonPreview = QtWidgets.QPushButton('Просмотр', self)
-        self.buttonPreview.clicked.connect(self.handle_preview)
-        self.buttonPrint = QtWidgets.QPushButton('Печать', self)
-        self.buttonPrint.clicked.connect(self.handle_print)
-        layout = QtWidgets.QGridLayout(self)
-        layout.addWidget(self.web_view, 0, 0, 1, 2)
-        layout.addWidget(self.buttonPreview, 1, 0)
-        layout.addWidget(self.buttonPrint, 1, 1)
 
     #   Собираем html страницу наряда.
     def load_html(self):
         line = 1
-        html_content = "<html><body>"
-        html_content += '<font size = "5" face = "Calibri Light">'
-        if len(self.dict_text['1']) > 0:
-            html_content += '<p>'
-            for value in self.dict_text['1'].values():
-                if value == 'Ответственный руководитель работ:':
-                    html_content += value + self.manager_electric + '<br>'
-                elif value == 'Ответственный производитель работ:':
-                    html_content += value + self.producer_electric + '<br>'
-                elif value == 'Дата:':
-                    html_content += '<p><center>' + value + self.date + '</center></p>'
-                elif value == 'Исполнитель:':
-                    html_content += value + self.worker + '<br>'
-                elif value == 'Смена:':
-                    html_content += value + self.time_of_day + '<br>'
-                else:
-                    html_content += value + '<br>'
-            html_content += '</p>'
-        html_content += '<table border="1">'
-
-        html_content += '<thead>'
-        html_content += '<th>№ п/п</th>' \
+        self.html_content += "<html>"
+        self.html_content += "<body>"
+        # if len(self.dict_text['1']) > 0:
+        #     self.html_content += '<p>'
+        #     for value in self.dict_text['1'].values():
+        #         if value == 'Ответственный руководитель работ:':
+        #             self.html_content += value + self.manager_electric + '<br>'
+        #         elif value == 'Ответственный производитель работ:':
+        #             self.html_content += value + self.producer_electric + '<br>'
+        #         elif value == 'Дата:':
+        #             self.html_content += '<p><center>' + value + self.date + '</center></p>'
+        #         elif value == 'Исполнитель:':
+        #             self.html_content += value + self.worker + '<br>'
+        #         elif value == 'Смена:':
+        #             self.html_content += value + self.time_of_day + '<br>'
+        #         else:
+        #             self.html_content += value + '<br>'
+        #     self.html_content += '</p>'
+        self.html_content += '<table border="1" border-collapse="collapse">'
+        self.html_content += '<thead">'
+        self.html_content += '<tr style="font-family: Calibri Light;">'
+        self.html_content += '<th>№ п/п</th>' \
                         '<th>Цех участок</th>' \
                         '<th>Объект ремонта</th>' \
                         '<th>Технологические операции</th>' \
                         '<th>Продолжительность</th>' \
                         '<th>Отметка о выполнении</th>' \
                         '<th>Отметка о выполнении</th>'
-        html_content += '</thead>'
+        self.html_content += '<tr>'
+        self.html_content += '</thead>'
 
-        html_content += '<tbody>'
+        self.html_content += '<tbody>'
 
-        if len(self.dict_text['2']) > 0:
-            for value in self.dict_text['2'].values():
-                html_content += '<tr>'
-                html_content += '<td align="center">' + str(line) + '</td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>' \
-                                '<td align="left">' + value + '</td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>'
-                html_content += '</tr>'
-                line += 1
+        # if len(self.dict_text['2']) > 0:
+        #     for value in self.dict_text['2'].values():
+        #         self.html_content += '<tr>'
+        #         self.html_content += '<td align="center">' + str(line) + '</td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="left">' + value + '</td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>'
+        #         self.html_content += '</tr>'
+        #         line += 1
+        #
+        # if len(self.description) > 0:
+        #     for value in self.description:
+        #         self.html_content += '<tr>'
+        #         self.html_content += '<td align="center">' + str(line) + '</td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="left">' + '<em>' + '<b>' + value + '</b>' + '</em>' + '</td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>' \
+        #                         '<td align="center"></td>'
+        #         self.html_content += '</tr>'
+        #         line += 1
 
-        if len(self.description) > 0:
-            for value in self.description:
-                html_content += '<tr>'
-                html_content += '<td align="center">' + str(line) + '</td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>' \
-                                '<td align="left">' + '<em>' + '<b>' + value + '</b>' + '</em>' + '</td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>' \
-                                '<td align="center"></td>'
-                html_content += '</tr>'
-                line += 1
+        self.html_content += '</tbody>'
+        self.html_content += '</table>'
+        #
+        # if len(self.dict_text['3']) > 0:
+        #     for value in self.dict_text['3'].values():
+        #         if value == 'Исполнитель:':
+        #             self.html_content += '<p>' + value + ' _________________ ' + '/' + self.worker + '/' + '</p>'
+        #         elif value == 'Ответственный руководитель работ:':
+        #             manager_electric = (' '.join(self.manager_electric.split()[-2:]), self.manager_electric)[self.manager_electric == '']
+        #             self.html_content += '<p>' + value + ' _________________ ' + '/' + manager_electric + '/' + '</p>'
+        #         elif value == 'Ответственный производитель работ:':
+        #             producer_electric = (' '.join(self.producer_electric.split()[-2:]), self.producer_electric)[self.producer_electric == '']
+        #             self.html_content += '<p>' + value + ' _________________ ' + '/' + producer_electric + '/' + '</p>'
+        #         else:
+        #             self.html_content += '<p>' + value + '</p>'
 
-        html_content += '</tbody>'
-        html_content += '</table>'
-
-        if len(self.dict_text['3']) > 0:
-            for value in self.dict_text['3'].values():
-                if value == 'Исполнитель:':
-                    html_content += '<p>' + value + ' _________________ ' + '/' + self.worker + '/' + '</p>'
-                elif value == 'Ответственный руководитель работ:':
-                    manager_electric = (' '.join(self.manager_electric.split()[-2:]), self.manager_electric)[self.manager_electric == '']
-                    html_content += '<p>' + value + ' _________________ ' + '/' + manager_electric + '/' + '</p>'
-                elif value == 'Ответственный производитель работ:':
-                    producer_electric = (' '.join(self.producer_electric.split()[-2:]), self.producer_electric)[self.producer_electric == '']
-                    html_content += '<p>' + value + ' _________________ ' + '/' + producer_electric + '/' + '</p>'
-                else:
-                    html_content += '<p>' + value + '</p>'
-
-        html_content += "</font></body></html>"
-
-        self.web_view.setHtml(html_content)
+        self.html_content += "</body>"
+        self.html_content += "</html>"
 
     def get_text_permit(self):
         try:
@@ -1095,23 +1092,3 @@ class PermitHtml(QWidget):
                     return dict_text
         except:
             pass
-
-    def handle_print(self):
-        printer = QtPrintSupport.QPrinter(QtPrintSupport.QPrinter.HighResolution)
-        dialog = QtPrintSupport.QPrintDialog(printer, self)
-        if dialog.exec_() == QtPrintSupport.QPrintDialog.Accepted:
-            self.handle_paint_request(printer)
-
-    def handle_preview(self):
-        dialog = QtPrintSupport.QPrintPreviewDialog()
-        dialog.paintRequested.connect(self.handle_paint_request)
-        dialog.exec_()
-
-    def handle_paint_request(self, printer):
-        painter = QtGui.QPainter(printer)
-        painter.setViewport(self.web_view.rect())
-        painter.setWindow(self.web_view.rect())
-        painter.setViewport(500, 500, 3000, 2000)
-        painter.setWindow(-100, -150, 200, 200)
-        self.web_view.render(painter)
-        painter.end()
