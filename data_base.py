@@ -77,7 +77,7 @@ class DataBase:
     def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_guild):
         return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status,\
                         wr.worker_id, wr.day_id, w.guild, wr.place, wr.time_of_day, wr.description, w.role,\
-                        t.team, t.brigadier\
+                        t.team, t.brigadier, rs.props_type\
                 FROM workers_report wr\
                 join workers w on w.id = wr.worker_id\
                 join date_report dr on dr.id = wr.day_id\
@@ -92,21 +92,22 @@ class DataBase:
 
     @staticmethod
     def sql_edit_table():
-        return "UPDATE workers_report\
-                SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,(SELECT id FROM teams t WHERE t.team = %s))\
-                WHERE worker_id = %s\
+        return "UPDATE workers_report \
+                SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,(SELECT id FROM teams t WHERE t.team = %s)) \
+                WHERE worker_id = %s \
                 AND day_id = %s \
                 RETURNING day_id, worker_id"
 
     @staticmethod
     def sql_list_all_date():
-        return "SELECT DISTINCT DATE_PART('year', date)::int AS years, DATE_PART('month', date)::int AS month, TO_CHAR(date, 'TMMonth') as month_name\
+        return "SELECT DISTINCT DATE_PART('year', date)::int AS years, DATE_PART('month', date)::int AS month, TO_CHAR(date, 'TMMonth') as month_name \
                 FROM date_report dr \
                 ORDER BY years, month"
 
     @staticmethod
     def sql_read_text_permit():
         return "SELECT block, line, text FROM permit_text \
+                WHERE type_permit = 1 OR type_permit = %s \
                 ORDER BY block, line"
 
     @staticmethod

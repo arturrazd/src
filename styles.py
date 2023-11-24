@@ -70,7 +70,7 @@ class Styles:
                             border: none; \
                             border-radius: 0px; \
                             font-family: Calibri Light; \
-                            font: 15px; \
+                            font: 10px; \
                             padding: 0px; \
                             color: rgb(150, 150, 150); \
                             } \
@@ -313,23 +313,6 @@ class Styles:
                             { \
                             background: rgb(10, 10, 10); \
                             }"
-
-    @staticmethod
-    def color_rating(data_rating):
-        rating_color = {1: 'color: red;', 2: 'color: rgb(200, 150, 0);',
-                        3: 'color: rgb(80, 150, 60);'}
-        return rating_color.get(data_rating, '')
-
-    @staticmethod
-    def color_status(data_status):
-        status_color = {1: 'color: rgb(150, 150, 150);', 2: 'color: rgb(80, 150, 60);',
-                        3: 'color: rgb(200, 20, 20);'}
-        return status_color.get(data_status, '')
-
-    @staticmethod
-    def color_hours(worker_rating):
-        color_dict = {0: 'transparent'}
-        return "color: " + color_dict.get(worker_rating, 'rgb(255, 255, 0)')
 
 
 class AlignDelegate(QtWidgets.QStyledItemDelegate):

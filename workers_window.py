@@ -26,8 +26,6 @@ class WorkersWindow(QWidget):
         self.list_role = list()
         self.list_guild = list()
         self.dict_guilds = dict()
-        self.login = ''
-        self.password = ''
 
         self.table_workers = TableWorkers(self)
         # кнопка "обновить"
