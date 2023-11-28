@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Collective")
-        self.setWindowIcon(QtGui.QIcon('icon.png'))
+        self.setWindowIcon(QtGui.QIcon('collective.ico'))
         self.setStyleSheet(Styles.main_window())
         self.main_btn_size = QSize(200, 50)
         self.workers_window = WorkersWindow()
@@ -21,7 +21,6 @@ class MainWindow(QMainWindow):
 
         # создание кнопок панели бокового меню
         self.btn_1 = QPushButton('табель', self)
-        self.btn_1.clicked.connect(self.table_window.table_report.check_table)
         self.btn_1.clicked.connect(self.table_window.table_report.click_cell)
         self.btn_2 = QPushButton('сотрудники', self)
         self.btn_3 = QPushButton('отчеты', self)
