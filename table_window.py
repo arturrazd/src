@@ -6,6 +6,7 @@ from datetime import datetime
 from PyQt5 import QtWidgets, QtCore, QtGui, QtPrintSupport
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QKeySequence, QPixmap
+from PyQt5.QtPrintSupport import QPrintPreviewDialog
 from PyQt5.QtWidgets import *
 from psycopg2 import connect
 
@@ -82,7 +83,6 @@ class TableWindow(QWidget):
         self.init_panel_types()
 
         self.table_report.cellClicked.connect(self.show_element_panel)
-        self.table_report.cellClicked.connect(self.table_report.fill_panel)
 
         self.get_list_teams()
 
@@ -113,17 +113,22 @@ class TableWindow(QWidget):
 
     def show_element_panel(self):
         if self.table_report.col > 2:
-            self.clear_panel()
-            elements_types = {
-                #
-                '1': self.show_type_1,
-                '2': self.show_type_2,
-                '3': self.show_type_3
-            }
-            element = self.table_report.reports_dict[self.table_report.id_worker][self.table_report.id_date][
-                'props_type']
+            if self.table_report.change_panel or self.table_report.id_worker == 0:
+                if self.edit_layout.layout().count() != 0:
+                    self.clear_panel()
+                elements_types = {
+                    #
+                    '1': self.show_type_1,
+                    '2': self.show_type_2,
+                    '3': self.show_type_3
+                }
+                element = self.table_report.reports_dict[self.table_report.id_worker][self.table_report.id_date][
+                    'props_type']
 
-            [f() for f in elements_types[element]]
+                [f() for f in elements_types[element]]
+                self.table_report.change_panel = False
+            self.table_report.fill_panel()
+            self.init_scheduler_type(self.table_report.type_scheduler)
 
     def create_btn_main(self):
         # кнопка "обновить"
@@ -447,8 +452,9 @@ class TableWindow(QWidget):
         self.btn_insert_description.setFixedSize(self.input_btn_size)
         self.btn_insert_description.setStyleSheet(Styles.workers_btn())
         self.btn_insert_description.clicked.connect(self.show_input_description)
-        self.edit_layout.addWidget(self.btn_insert_description)
         self.btn_insert_description.setCursor(Qt.PointingHandCursor)
+
+        self.edit_layout.addWidget(self.btn_insert_description)
 
     def create_scheduler(self):
 
@@ -464,14 +470,14 @@ class TableWindow(QWidget):
         self.btn_scheduler_type1 = QPushButton('ДД-НН-ОВ', self, objectName='btn_scheduler_type1')
         self.btn_scheduler_type1.setFixedSize(self.middle_btn_size)
         self.btn_scheduler_type1.setStyleSheet(Styles.workers_btn())
-        self.btn_scheduler_type1.clicked.connect(self.init_scheduler_type1)
+        self.btn_scheduler_type1.clicked.connect(lambda x: self.init_scheduler_type(0))
         self.btn_scheduler_type1.setCursor(Qt.PointingHandCursor)
         self.btn_scheduler_type1.setContentsMargins(0, 0, 0, 0)
 
         self.btn_scheduler_type2 = QPushButton('ДН-ОВ', self, objectName='btn_scheduler_type1')
         self.btn_scheduler_type2.setFixedSize(self.middle_btn_size)
         self.btn_scheduler_type2.setStyleSheet(Styles.workers_btn())
-        self.btn_scheduler_type2.clicked.connect(self.init_scheduler_type2)
+        self.btn_scheduler_type2.clicked.connect(lambda x: self.init_scheduler_type(1))
         self.btn_scheduler_type2.setCursor(Qt.PointingHandCursor)
         self.btn_scheduler_type2.setContentsMargins(0, 0, 0, 0)
 
@@ -498,8 +504,6 @@ class TableWindow(QWidget):
         self.edit_layout_scheduler.addWidget(btn_clear_scheduler, 4, 1, 1, 2, Qt.AlignCenter)
 
         self.edit_layout.addLayout(self.edit_layout_scheduler)
-
-        self.init_scheduler_type1()
 
     def change_worker_hours(self, h, p, tod):
         self.table_report.copy_report()
@@ -560,15 +564,9 @@ class TableWindow(QWidget):
         self.table_report.check_table()
         self.table_report.fill_panel()
 
-    def init_scheduler_type1(self):
-        self.table_report.type_scheduler = 0
-        self.btn_scheduler_type1.setDown(True)
-        self.btn_scheduler_type2.setDown(False)
-
-    def init_scheduler_type2(self):
-        self.table_report.type_scheduler = 1
-        self.btn_scheduler_type1.setDown(False)
-        self.btn_scheduler_type2.setDown(True)
+    def init_scheduler_type(self, scheduler_type):
+        self.table_report.type_scheduler = scheduler_type
+        self.table_report.fill_panel()
 
     def clear_panel(self):
 
@@ -683,10 +681,14 @@ class TableWindow(QWidget):
 
         #   Определяем смену работ
         time_of_day_dict = {0: '', 1: ' дневная', 2: ' ночная'}
-        p_time_of_day = time_of_day_dict[self.combo_time_of_day.currentIndex()]  # Читаем из combo-box текущее значение.
+        tod = self.table_report.reports_dict[self.table_report.id_worker][self.table_report.id_date]['time_of_day']
+        p_time_of_day = time_of_day_dict[tod]  # Читаем из combo-box текущее значение.
 
         #   Определяем текст дополнительных работ из примечания к рабочему дню (input_decription).
-        p_description = self.input_decription.toPlainText().strip('--').split(sep='--')
+        worker = self.table_report.id_worker
+        date = self.table_report.id_date
+        cur_text = self.table_report.reports_dict[worker][date]['description']
+        p_description = cur_text.strip('--').split(sep='--')
 
         #   Определяем специальность работника.
         p_guild = self.table_report.reports_dict[self.table_report.id_worker][self.table_report.id_date]['guild']
@@ -695,16 +697,25 @@ class TableWindow(QWidget):
         printer.setOutputFormat(QtPrintSupport.QPrinter.PdfFormat)
         printer.setPaperSize(QtPrintSupport.QPrinter.A4)
         printer.setOrientation(QtPrintSupport.QPrinter.Portrait)
-        printer.setOutputFileName('filename.pdf')
 
-        doc = QtGui.QTextDocument()
+        self.doc = QtGui.QTextDocument()
 
         #   Создаем объект наряда.
         self.permit = PermitHtml(p_date, p_manager, p_producer, p_worker, p_time_of_day, p_description, p_guild)
 
-        doc.setHtml(self.permit.html_content)
-        doc.setPageSize(QtCore.QSizeF(printer.pageRect().size()))
-        doc.print_(printer)
+        self.doc.setHtml(self.permit.html_content)
+        self.doc.setPageSize(QtCore.QSizeF(printer.pageRect().size()))
+
+        permit_preview = QPrintPreviewDialog()
+        permit_preview.setFixedSize(1000, 1000)
+
+        permit_preview.paintRequested.connect(self.print_preview)
+
+        permit_preview.exec_()
+
+    def print_preview(self, printer):
+        document = self.doc
+        document.print_(printer)
 
     def get_settings(self, setting):
         try:
@@ -729,8 +740,6 @@ class TableReport(QTableWidget):
     def __init__(self, wg):
         super().__init__(wg)
 
-        self.change_panel = False
-
         self.path_to_file = os.path.join("C:\\Users", os.environ["username"], "filter.json")
 
         self.init_item_table()
@@ -746,6 +755,8 @@ class TableReport(QTableWidget):
 
         self.show_panel_mode = 0
         self.type_scheduler = 0
+        self.id_worker = 0
+        self.change_panel = False
         self.wg = wg
         self.verticalHeader().hide()
         self.horizontalHeader().setSectionsClickable(False)
@@ -823,16 +834,21 @@ class TableReport(QTableWidget):
             [self.item(i, 1).setForeground(QColor(200, 200, 200, 255)) for i in range(1, self.rowCount())]
             self.item(row, 1).setForeground(QColor(255, 255, 255, 255))
             self.check_table()
-            self.id_worker = int(self.item(row, 2).text())
+            if self.id_worker != int(self.item(row, 2).text()):
+                self.id_worker = int(self.item(row, 2).text())
+                self.change_panel = True
             self.id_date = int(self.item(0, col).text())
 
     def fill_panel(self):
         if self.col > 2:
             self.wg.lbl_hour.setText(str(self.reports_dict[self.id_worker][self.id_date]['hour']))
             if self.wg.findChild(QComboBox, name='combo_teams') is not None:
-                self.wg.combo_teams.setCurrentText(str(self.reports_dict[self.id_worker][self.id_date]['team']) + ': ' +
-                                                   self.reports_dict[self.id_worker][self.id_date]['brigadier'])
-
+                team = str(self.reports_dict[self.id_worker][self.id_date]['team'])
+                brigadier = self.reports_dict[self.id_worker][self.id_date]['brigadier']
+                self.wg.combo_teams.setCurrentText((team + ': ' + brigadier, brigadier)[team == '0'])
+            if self.wg.findChild(QPushButton, name='btn_scheduler_type1'):
+                self.wg.btn_scheduler_type1.setDown(not bool(self.type_scheduler))
+                self.wg.btn_scheduler_type2.setDown(bool(self.type_scheduler))
     def copy_report(self):
         if self.col > 2 and self.row > 0:
             self.buff_copy_hours = self.reports_dict[self.id_worker][self.id_date]['hour']
@@ -1210,21 +1226,21 @@ class PermitHtml:
             #   Шапка таблицы
             self.html_content += '<table border="1" width="100%" style="border-collapse: collapse; font-size: 8px; font-family: Calibri Light;">'
             self.html_content += '<thead>'
-            self.html_content += '<tr style="font-size:60%;">'
-            self.html_content += '<th style="width:3%">№<br>п/п</th>'
-            self.html_content += '<th style="width:10%">Цех<br>участок</th>'
-            self.html_content += '<th style="width:15%">Объект<br>ремонта</th>'
-            self.html_content += '<th style="width:42%">Технологические<br>операции</th>'
-            self.html_content += '<th style="width:10%">Продолжи<br>тельность</th>'
-            self.html_content += '<th style="width:10%">Отметка о<br>выполнении</th>'
-            self.html_content += '<th style="width:10%">Примечание</th>'
+            self.html_content += '<tr valign=middle style="font-size:60%;">'
+            self.html_content += '<th valign=middle style="width:3%">№<br>п/п</th>'
+            self.html_content += '<th valign=middle style="width:10%">Цех<br>участок</th>'
+            self.html_content += '<th valign=middle style="width:15%">Объект<br>ремонта</th>'
+            self.html_content += '<th valign=middle style="width:42%">Технологические<br>операции</th>'
+            self.html_content += '<th valign=middle style="width:10%">Продолжи<br>тельность</th>'
+            self.html_content += '<th valign=middle style="width:10%">Отметка о<br>выполнении</th>'
+            self.html_content += '<th valign=middle style="width:10%">Примечание</th>'
             self.html_content += '</tr>'
             self.html_content += '</thead>'
             #   Тело таблицы
             self.html_content += '<tbody>'
             for _ in self.dict_text['5'].values():
                 self.html_content += '<tr style="font-size:60%;">'
-                self.html_content += '<td align="center">' + str(line) + '</td>'
+                self.html_content += '<td align=center valign=middle>' + str(line) + '</td>'
                 self.html_content += '<td></td>'
                 self.html_content += '<td></td>'
                 self.html_content += '<td align="left">' + _ + '</td>'
@@ -1233,13 +1249,13 @@ class PermitHtml:
                 self.html_content += '<td></td>'
                 self.html_content += '</tr>'
                 line += 1
-            if len(self.description) > 0:
+            if self.description != ['']:
                 for _ in self.description:
                     self.html_content += '<tr>'
-                    self.html_content += '<td align="center">' + str(line) + '</td>'
+                    self.html_content += '<td align=center valign=middle>' + str(line) + '</td>'
                     self.html_content += '<td></td>'
                     self.html_content += '<td></td>'
-                    self.html_content += '<td align="left">' + '<em>' + '<b>' + _ + '</b>' + '</em>' + '</td>'
+                    self.html_content += '<td align="left">' + '<em>' + _ + '</em>' + '</td>'
                     self.html_content += '<td></td>'
                     self.html_content += '<td></td>'
                     self.html_content += '<td></td>'
