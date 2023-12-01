@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtPrintSupport import QPrintPreviewDialog
 from PyQt5.QtWidgets import *
 from styles import Styles
+from data_base import DataBase
 
 locale.setlocale(category=locale.LC_ALL, locale="Russian")
 
@@ -32,6 +33,12 @@ class ReportsWindow(QWidget):
         self.page_layout.setContentsMargins(0, 0, 0, 0)
         self.page_layout.addWidget(self.report_view)
         self.page_layout.addLayout(self.panel_layout)
+
+        self.report_dict = dict()
+
+        #self.workers_list =
+
+        self.html_content = ''
 
         self.show_element_panel()
 
@@ -70,11 +77,24 @@ class ReportsWindow(QWidget):
         self.panel_layout.addStretch()
         self.panel_layout.addWidget(btn_print)
 
-
     def show_report_hour(self):
-        self.html_content = '<p style="font-size: 10px; font-family: Calibri Light;">'
-        self.html_content += '<u>' + 'self.manager_electric' + '</u>' + '<br/>'
-        self.html_content += '</p>'
+
+        for key, value in self.report_dict.items():
+            pass
+            # self.html_content += '<table>'
+            # self.html_content += '<tr>'
+            # self.html_content += '<td></td>'
+            # self.html_content +=
+            # self.html_content +=
+            # self.html_content +=
+            # self.html_content +=
+            # self.html_content +=
+            # self.html_content +=
+
+
+
+
+    def show_report_place(self):
         self.report_view.setHtml(self.html_content)
 
     def print_report(self):
@@ -98,12 +118,4 @@ class ReportsWindow(QWidget):
     def print_preview(self, printer):
         document = self.doc
         document.print_(printer)
-
-    def show_report_place(self):
-        self.html_content = '<p style="font-size: 10px; font-family: Calibri Light;">'
-        self.html_content += '<u>' + 'asfsfgrgre' + '</u>' + '<br/>'
-        self.html_content += '</p>'
-        self.report_view.setHtml(self.html_content)
-
-
 

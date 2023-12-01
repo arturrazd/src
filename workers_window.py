@@ -1,31 +1,28 @@
-import calendar
 import locale
-from datetime import datetime, timedelta
-
+from datetime import datetime
 from PyQt5.QtGui import QIntValidator, QColor
-
 from styles import AlignDelegate
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import *
-from psycopg2 import connect
 from data_base import DataBase
+from data_base import select_workers, insert_worker, select_date, insert_report, update_worker, delete_worker
 from styles import Styles
 
 locale.setlocale(category=locale.LC_ALL, locale="Russian")
 
 
 class WorkersWindow(QWidget):
-    def __init__(self):
+    def __init__(self, list_roles, list_guilds, dict_guilds):
         super().__init__()
 
         main_btn_size = QSize(35, 35)
         input_btn_size = QSize(200, 30)
         icon_size = QSize(15, 15)
 
-        self.list_role = list()
-        self.list_guild = list()
-        self.dict_guilds = dict()
+        self.list_roles = list_roles
+        self.list_guilds = list_guilds
+        self.dict_guilds = dict_guilds
 
         self.table_workers = TableWorkers(self)
         # кнопка "обновить"
@@ -61,14 +58,12 @@ class WorkersWindow(QWidget):
         self.input_lname.setPlaceholderText('отчество')
         # должность
         self.combo_role = QComboBox(self)
-        combo_list_role = self.get_list_role()
-        self.combo_role.addItems(combo_list_role)
+        self.combo_role.addItems(['должность'] + self.list_roles)
         self.combo_role.setFixedSize(input_btn_size)
         self.combo_role.setStyleSheet(Styles.workers_combo())
         self.combo_role.activated.connect(self.table_workers.get_change_list_guild)
         # цех/служба
         self.combo_guild = QComboBox(self)
-        self.get_list_guild()
         self.combo_guild.addItem('специальность')
         self.combo_guild.setFixedSize(input_btn_size)
         self.combo_guild.setStyleSheet(Styles.workers_combo())
@@ -164,68 +159,22 @@ class WorkersWindow(QWidget):
 
     def add_worker(self):
         name_guild = (self.combo_guild.currentText(), '-')[self.combo_guild.currentIndex() == -1]
-        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-            conn.autocommit = True
-            with conn.cursor() as cursor:
-                cursor.execute(DataBase.sql_add_worker(), (self.input_sname.text(), self.input_fname.text(),
-                                                           self.input_lname.text(), self.combo_role.currentIndex(),
-                                                           name_guild, self.combo_role.currentIndex(),
-                                                           int(self.input_tabel_number.text())))
-                insert_id = cursor.fetchone()
+        insert_id = insert_worker(self.input_sname.text(), self.input_fname.text(), self.input_lname.text(),
+                                  self.combo_role.currentIndex(), name_guild, int(self.input_tabel_number.text()))
         self.table_workers.add_worker_report(insert_id)
         self.table_workers.upd_table()
 
     def edit_worker(self):
         name_guild = (self.combo_guild.currentText(), '-')[self.combo_guild.currentIndex() == -1]
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                conn.autocommit = True
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_edit_worker(), ((self.input_sname.text(), self.input_fname.text(),
-                                                               self.input_lname.text(), self.combo_role.currentIndex(),
-                                                                 name_guild, self.combo_role.currentIndex(),
-                                                                 self.input_tabel_number.text(), int(self.id.text()))))
-        except:
-            pass
+        update_worker(self.input_sname.text(), self.input_fname.text(), self.input_lname.text(),
+                      self.combo_role.currentIndex(), name_guild, self.input_tabel_number.text(),
+                      int(self.id.text()))
         self.table_workers.upd_table()
 
     def del_worker(self):
-        try:
-            ids = int(self.id.text())
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                conn.autocommit = True
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_del_worker(), (ids,))
-        except:
-            pass
+        ids = int(self.id.text())
+        delete_worker(ids)
         self.table_workers.upd_table()
-
-    def get_list_role(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_list_role())
-                    list_role = cursor.fetchall()
-                    self.list_role = list_role
-                    combo_list_role = ['должность'] + [item for t in self.list_role for item in t if
-                                                       isinstance(item, str)]
-                    return combo_list_role
-        except:
-            pass
-
-    def get_list_guild(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_list_guild())
-                    self.list_guild = cursor.fetchall()
-                    for role in self.list_role:
-                        self.dict_guilds[role[1]] = []
-                        for guild in self.list_guild:
-                            if role[0] == guild[2]:
-                                self.dict_guilds[role[1]].append(guild[1])
-        except:
-            pass
 
 
 # класс - таблица
@@ -273,43 +222,33 @@ class TableWorkers(QTableWidget):
         self.clear()
         self.setRowCount(0)
         self.setHorizontalHeaderLabels(
-            ['№','', 'Табельный \nномер', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Цех/Отдел'])
-        # try:
-        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(DataBase.sql_read_workers_1())
-                rows = cursor.fetchall()
-                delegate = AlignDelegate(self)
-                self.setItemDelegateForColumn(0, delegate)
-                self.setItemDelegateForColumn(2, delegate)
-                self.setItemDelegateForColumn(6, delegate)
-                self.setItemDelegateForColumn(7, delegate)
-                i = 0
-                for row in rows:
-                    self.setRowCount(self.rowCount() + 1)
-                    self.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-                    j = 1
-                    for elem in row:
-                        self.setItem(i, j, QTableWidgetItem(str(elem).strip()))
-                        if j in [3, 4, 5]:
-                            self.item(i, j).setForeground(QColor(200, 150, 0, 255))
-                        j += 1
-                    self.setRowHeight(i, 26)
-                    i += 1
+            ['№', '', 'Табельный \nномер', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Цех/Отдел'])
+        delegate = AlignDelegate(self)
+        self.setItemDelegateForColumn(0, delegate)
+        self.setItemDelegateForColumn(2, delegate)
+        self.setItemDelegateForColumn(6, delegate)
+        self.setItemDelegateForColumn(7, delegate)
+        i = 0
+        rows = select_workers()
+        for row in rows:
+            self.setRowCount(self.rowCount() + 1)
+            self.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+            j = 1
+            for elem in row:
+                self.setItem(i, j, QTableWidgetItem(str(elem).strip()))
+                if j in [3, 4, 5]:
+                    self.item(i, j).setForeground(QColor(200, 150, 0, 255))
+                j += 1
+            self.setRowHeight(i, 26)
+            i += 1
         self.setCurrentCell(current_row, current_col)
-        # except:
-        #     pass
 
     def add_worker_report(self, new_worker_id):
-        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-            conn.autocommit = True
-            with conn.cursor() as cursor:
-                cur_year = datetime.now().date().year
-                cur_month = datetime.now().date().month
-                cursor.execute(DataBase.sql_read_date_report(), (cur_year, cur_month,))
-                date_list = cursor.fetchall()
-                for date in date_list:
-                    cursor.execute(DataBase.sql_insert_workers_report(), (date[0], new_worker_id, 0, 0, 0, 0, 0, '', 0))
+        cur_year = datetime.now().date().year
+        cur_month = datetime.now().date().month
+        for date in select_date(cur_year, cur_month):
+            insert_report(date[0], new_worker_id)
+
     def get_change_list_guild(self):
         self.wg.combo_guild.clear()
         if self.wg.combo_role.currentIndex() > 0:

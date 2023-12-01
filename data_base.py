@@ -1,116 +1,213 @@
-class DataBase:
+from psycopg2 import connect
 
+
+class DataBase:
     login = ''
     password = ''
+    requests = dict()
 
     @staticmethod
-    def sql_read_users():
-        return "SELECT usename FROM pg_catalog.pg_user \
-                WHERE usename like 'col_%' \
-                ORDER BY usename"
-
-    @staticmethod
-    def config(user, password):
-        return {
-            "host": "localhost",
+    def init_connection(login, password):
+        connection = {
+            "host": "10.10.10.93",
             "dbname": "CollectiveDB",
-            "user": user,
+            "user": login,
             "password": password,
             "port": "5432"
         }
+        return connection
 
-    @staticmethod
-    def sql_read_workers_1():
-        return "SELECT  w.id, w.table_number, w.second_name, w.first_name, w.last_name, r.role, g.guild FROM workers w \
-                JOIN roles r ON w.role = r.id  \
-                JOIN guilds g ON w.guild = g.id  \
-                ORDER BY w.second_name, w.first_name, w.last_name"
 
-    @staticmethod
-    def sql_read_workers_2():
-        return "SELECT id, second_name, first_name, last_name, role, guild FROM workers \
-                ORDER BY second_name, first_name, last_name"
+def select_requests():
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM requests")
+                for row in cursor.fetchall():
+                    DataBase.requests[row[0]] = row[1]
+                pass
+    except:
+        pass
 
-    @staticmethod
-    def sql_add_worker():
-        return "INSERT INTO workers (second_name, first_name, last_name, role, guild, table_number) \
-                VALUES (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM guilds g WHERE g.guild = %s AND g.role =%s), 1000)),%s) \
-                RETURNING id"
 
-    @staticmethod
-    def sql_edit_worker():
-        return "UPDATE workers SET (second_name, first_name, last_name, role, guild, table_number) = \
-                (%s,%s,%s,%s,(SELECT COALESCE((SELECT id FROM guilds g WHERE g.guild = %s AND g.role =%s), 1000)), %s) WHERE id = %s"
+def select_workers():
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_workers'])
+                workers = cursor.fetchall()
+                return workers
+    except:
+        pass
 
-    @staticmethod
-    def sql_del_worker():
-        return "DELETE FROM workers WHERE id=%s"
 
-    @staticmethod
-    def sql_list_role():
-        return "SELECT id, role FROM roles ORDER BY id"
+def insert_worker(s_name, f_name, l_name, role, guild, t_num):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['insert_worker'], (s_name, f_name, l_name, role, guild, role, t_num,))
+                return cursor.fetchone()
+    except:
+        pass
 
-    @staticmethod
-    def sql_list_teams():
-        return "SELECT id, team, brigadier FROM teams ORDER BY id"
 
-    @staticmethod
-    def sql_list_guild():
-        return "SELECT id, guild, role FROM guilds ORDER BY id"
+def update_worker(s_name, f_name, l_name, role, guild, t_num, w_id):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['update_worker'],
+                               (s_name, f_name, l_name, role, guild, role, t_num, w_id,))
+    except:
+        pass
 
-    @staticmethod
-    def sql_read_date_report():
-        return "SELECT id, date, day_of_week FROM date_report \
-                WHERE extract(year from date::timestamp) = %s \
-                AND extract(month from date::timestamp) = %s \
-               ORDER BY date"
 
-    @staticmethod
-    def sql_insert_date_report():
-        return "INSERT INTO date_report (date, day_of_week) values (%s, %s)"
+def delete_worker(ids):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['delete_worker'], (ids,))
+    except:
+        pass
 
-    @staticmethod
-    def sql_insert_workers_report():
-        return "INSERT INTO workers_report (day_id, worker_id, work_hour, rating, status, place, time_of_day, description, team) values (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
 
-    @staticmethod
-    def sql_read_workers_report(filter_worker_role, date_year, date_month, filter_worker_guild):
-        return "SELECT w.second_name, w.first_name, w.last_name, dr.date, wr.work_hour, wr.rating, wr.status,\
-                        wr.worker_id, wr.day_id, w.guild, wr.place, wr.time_of_day, wr.description, w.role,\
-                        t.team, t.brigadier, rs.props_type\
-                FROM workers_report wr\
-                join workers w on w.id = wr.worker_id\
-                join date_report dr on dr.id = wr.day_id\
-                join roles rs on w.role = rs.id\
-                join guilds gd on w.guild = gd.id\
-                join teams t on wr.team = t.id\
-                where rs.role = " + filter_worker_role + "\
-                and gd.guild = " + filter_worker_guild + "\
-                and extract(year from dr.date::timestamp) = " + date_year + "\
-                and extract(month from dr.date::timestamp) = " + date_month + "\
-                ORDER BY w.second_name, w.first_name, w.last_name, dr.date"
+def select_roles():
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_roles'])
+                tuple_role = cursor.fetchall()
+                list_role = [role[1] for role in tuple_role]
+            return tuple_role, list_role
+    except:
+        pass
 
-    @staticmethod
-    def sql_edit_table():
-        return "UPDATE workers_report \
-                SET (work_hour, rating, status, place, time_of_day, description, team) = (%s,%s,%s,%s,%s,%s,(SELECT id FROM teams t WHERE t.team = %s)) \
-                WHERE worker_id = %s \
-                AND day_id = %s \
-                RETURNING day_id, worker_id"
 
-    @staticmethod
-    def sql_list_all_date():
-        return "SELECT DISTINCT DATE_PART('year', date)::int AS years, DATE_PART('month', date)::int AS month, TO_CHAR(date, 'TMMonth') as month_name \
-                FROM date_report dr \
-                ORDER BY years, month"
+def select_teams():
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_teams'])
+                list_teams_tmp = cursor.fetchall()
+                list_teams = [str(team[1]) + ': ' + team[2] for team in list_teams_tmp]
+                list_teams[0] = 'бригада'
+                return list_teams
+    except:
+        pass
 
-    @staticmethod
-    def sql_read_text_permit():
-        return "SELECT block, line, text FROM permit_text \
-                WHERE type_permit = 1 OR type_permit = %s \
-                ORDER BY block, line"
 
-    @staticmethod
-    def sql_read_settings():
-        return "SELECT value FROM settings \
-                WHERE name = %s"
+def select_guilds(tuple_role):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_guilds'])
+                list_guild = cursor.fetchall()
+                dict_guilds = dict()
+                for role in tuple_role:
+                    dict_guilds[role[1]] = []
+                    for guild in list_guild:
+                        if role[0] == guild[2]:
+                            dict_guilds[role[1]].append(guild[1])
+                return list_guild, dict_guilds
+    except:
+        pass
+
+
+def select_date(year, month):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_cur_dates'], (year, month,))
+                return tuple(cursor.fetchall())
+    except:
+        pass
+
+
+def insert_report(id_date, id_worker):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['insert_report'], (id_date, id_worker,))
+    except:
+        pass
+
+
+def select_reports(role, guild, year, month):
+    with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(DataBase.requests['select_reports'], (role, guild, year, month,))
+            reports = cursor.fetchall()
+            id_report = 0
+            new_reports_dict = dict()
+            for report in reports:
+                if id_report != report[7]:
+                    new_reports_dict[report[7]] = dict()
+                    id_report = report[7]
+                new_reports_dict[report[7]][report[8]] = {'role': report[13], 'hour': report[4],
+                                                          'rating': report[5], 'status': report[6],
+                                                          'place': report[10], 'time_of_day': report[11],
+                                                          'description': report[12], 'team': report[14],
+                                                          'brigadier': report[15], 'guild': report[9],
+                                                          'props_type': report[16]}
+            return new_reports_dict, reports
+
+
+def update_report(hour, rating, status, place, time_of_day, description, team, id_worker, id_date):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['update_report'],
+                               (hour, rating, status, place, time_of_day, description, team, id_worker, id_date))
+    except:
+        pass
+
+
+def select_all_date():
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                all_date_dict = dict()
+                cursor.execute(DataBase.requests['select_all_date'])
+                all_date_list = cursor.fetchall()
+                year = 0
+                for date in all_date_list:
+                    if year != date[0]:
+                        all_date_dict[str(date[0])] = dict()
+                        year = date[0]
+                    all_date_dict[str(date[0])][str(date[1])] = str(date[2]).lower()
+                return all_date_dict
+    except:
+        pass
+
+
+def select_text_permit(type_permit):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                dict_text = dict()
+                cursor.execute(DataBase.requests['select_text_permit'], (type_permit,))
+                text_list = cursor.fetchall()
+                group = 0
+                for text in text_list:
+                    if group != text[0]:
+                        dict_text[str(text[0])] = dict()
+                        group = text[0]
+                    dict_text[str(text[0])][str(text[1])] = str(text[2])
+                return dict_text
+    except:
+        pass
+
+
+def select_settings(setting):
+    try:
+        with connect(**DataBase.init_connection(DataBase.login, DataBase.password)) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(DataBase.requests['select_settings'], (setting,))
+                value = cursor.fetchall()
+                return value
+    except:
+        pass

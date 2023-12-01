@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets
 from psycopg2 import connect
-from data_base import DataBase
+from data_base import DataBase as db
+from data_base import select_requests
 from main_window import MainWindow
 
 
@@ -22,9 +23,11 @@ class Login(QtWidgets.QDialog):
 
     def first_connect(self):
         try:
-            with connect(**DataBase.config('col_engineer', 'coll')) as conn:
+            login = 'col_engineer'
+            password = 'coll'
+            with connect(**db.init_connection(login, password)) as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_read_users())
+                    cursor.execute("SELECT usename FROM pg_catalog.pg_user WHERE usename like 'col_%' ORDER BY usename")
                     self.list_app_users = cursor.fetchall()
         except:
             pass
@@ -32,10 +35,11 @@ class Login(QtWidgets.QDialog):
     def handle_login(self):
 
         try:
-            with connect(**DataBase.config(self.combo_name.currentText(), self.textPass.text())) as conn:
+            with connect(**db.init_connection(self.combo_name.currentText(), self.textPass.text())) as conn:
                 self.accept()
-                DataBase.login = self.combo_name.currentText()
-                DataBase.password = self.textPass.text()
+                db.login = self.combo_name.currentText()
+                db.password = self.textPass.text()
+                select_requests()
         except:
             QtWidgets.QMessageBox.warning(self, 'Ошибка', 'Неверный пароль')
 

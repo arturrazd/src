@@ -1,6 +1,8 @@
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QStackedLayout
+
+from data_base import select_roles, select_guilds, select_teams, select_all_date
 from workers_window import WorkersWindow
 from table_window import TableWindow
 from reports_window import ReportsWindow
@@ -15,8 +17,15 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QtGui.QIcon('collective.ico'))
         self.setStyleSheet(Styles.main_window())
         self.main_btn_size = QSize(200, 50)
-        self.workers_window = WorkersWindow()
-        self.table_window = TableWindow()
+
+        self.tuple_role, self.list_roles = select_roles()
+        self.dict_guilds, self.list_guilds = select_guilds(self.tuple_role)
+        self.list_teams = select_teams()
+        self.list_all_dates = select_all_date()
+
+        self.workers_window = WorkersWindow(self.list_roles, self.dict_guilds, self.list_guilds)
+        self.table_window = TableWindow(self.list_roles, self.dict_guilds, self.list_guilds, self.list_teams,
+                                        self.list_all_dates)
         self.reports_window = ReportsWindow()
 
         # создание кнопок панели бокового меню
@@ -24,6 +33,7 @@ class MainWindow(QMainWindow):
         self.btn_1.clicked.connect(self.table_window.table_report.click_cell)
         self.btn_2 = QPushButton('сотрудники', self)
         self.btn_3 = QPushButton('отчеты', self)
+        self.btn_3.clicked.connect(self.transfer_report_dict)
         # всплывающие подсказки для кнопок
         self.btn_1.setToolTip('табель')
         self.btn_2.setToolTip('список сотрудников')
@@ -83,5 +93,8 @@ class MainWindow(QMainWindow):
         self.btn_1.setStyleSheet(Styles.main_btn(False))
         self.btn_2.setStyleSheet(Styles.main_btn(False))
         self.btn_3.setStyleSheet(Styles.main_btn(True))
+
+    def transfer_report_dict(self):
+        self.reports_window.report_dict = self.table_window.table_report.reports_dict
 
 

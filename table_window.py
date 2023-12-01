@@ -8,40 +8,30 @@ from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QKeySequence, QPixmap
 from PyQt5.QtPrintSupport import QPrintPreviewDialog
 from PyQt5.QtWidgets import *
-from psycopg2 import connect
-
 from data_base import DataBase
+from data_base import select_reports, select_date, select_text_permit, select_settings, update_report
 from styles import AlignDelegate, Styles
 
 locale.setlocale(category=locale.LC_ALL, locale="Russian")
 
 
 class TableWindow(QWidget):
-    def __init__(self):
+    def __init__(self, list_roles, list_guilds, dict_guilds, list_teams, list_all_dates):
         super().__init__()
 
-        self.list_role = list()
-        self.list_guild = list()
-        self.dict_guilds = dict()
-        self.list_teams = list()
-
-        self.dict_month = self.get_list_dates()
+        self.list_roles = list_roles
+        self.list_guilds = list_guilds
+        self.dict_guilds = dict_guilds
+        self.list_teams = list_teams
+        self.list_all_dates = list_all_dates
 
         #   Читаем из БД настройки отображения панели для сменных работников с и без наряда.
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    #   Читаем из БД настройки отображения панели для сменных работников без наряда.
-                    cursor.execute(DataBase.sql_read_settings(), ('panel_view_1',))
-                    text_panel_view_1 = cursor.fetchall()
-                    self.panel_view_1 = list(text_panel_view_1[0][0].replace(",", ""))  # Без наряда.
-                    self.panel_view_1 = [int(x) for x in self.panel_view_1]  # Преобразуем в список из чисел.
-                    cursor.execute(DataBase.sql_read_settings(), ('panel_view_2',))
-                    text_panel_view_2 = cursor.fetchall()
-                    self.panel_view_2 = list(text_panel_view_2[0][0].replace(",", ""))  # С нарядом.
-                    self.panel_view_2 = [int(x) for x in self.panel_view_2]  # Преобразуем в список из чисел.
-        except:
-            pass
+        text_panel_view_1 = select_settings('panel_view_1')
+        self.panel_view_1 = list(text_panel_view_1[0][0].replace(",", ""))  # Без наряда.
+        self.panel_view_1 = [int(x) for x in self.panel_view_1]  # Преобразуем в список из чисел.
+        text_panel_view_2 = select_settings('panel_view_2')
+        self.panel_view_2 = list(text_panel_view_2[0][0].replace(",", ""))  # С нарядом.
+        self.panel_view_2 = [int(x) for x in self.panel_view_2]  # Преобразуем в список из чисел.
 
         self.main_btn_size = QSize(35, 35)
         self.input_btn_size = QSize(200, 30)
@@ -83,8 +73,6 @@ class TableWindow(QWidget):
         self.init_panel_types()
 
         self.table_report.cellClicked.connect(self.show_element_panel)
-
-        self.get_list_teams()
 
     def init_panel_types(self):
         #   Отработанные часы, статус дня.
@@ -193,41 +181,40 @@ class TableWindow(QWidget):
 
         # фильтр по должности
         self.combo_role = QComboBox(self, objectName='combo_role')
-        self.combo_role.addItems(['должность'] + self.get_list_role())
+        self.combo_role.addItems(['должность'] + self.list_roles)
         self.combo_role.setCurrentText(self.table_report.filter_role[1:-1])
         self.combo_role.setFixedSize(self.input_btn_size)
         self.combo_role.setStyleSheet(Styles.workers_combo())
         self.combo_role.activated.connect(self.table_report.get_change_list_guild)
-        self.combo_role.activated.connect(self.table_report.set_filter_table)
+        self.combo_role.activated.connect(self.set_filter)
         self.combo_role.activated.connect(self.table_report.check_table)
         self.combo_role.setCursor(Qt.PointingHandCursor)
 
         # фильтр по отделу/цеху
         self.combo_guild = QComboBox(self, objectName='combo_guild')
-        self.get_list_guild()
         self.table_report.get_change_list_guild()
         self.combo_guild.setCurrentText(self.table_report.filter_guild[1:-1])
         self.combo_guild.setFixedSize(self.input_btn_size)
         self.combo_guild.setStyleSheet(Styles.workers_combo())
-        self.combo_guild.activated.connect(self.table_report.set_filter_table)
+        self.combo_guild.activated.connect(self.set_filter)
         self.combo_guild.activated.connect(self.table_report.check_table)
         self.combo_guild.setCursor(Qt.PointingHandCursor)
 
         # фильтр по году
         self.combo_years = QComboBox(self, objectName='combo_years')
-        self.list_years = list(self.get_list_dates().keys())
+        self.list_years = list(self.list_all_dates.keys())
         self.combo_years.addItems(self.list_years)
         self.combo_years.setCurrentText(str(datetime.now().date().year))
         self.combo_years.setFixedSize(self.input_btn_size)
         self.combo_years.setStyleSheet(Styles.workers_combo())
         self.combo_years.activated.connect(self.change_list_month)
-        self.combo_years.activated.connect(self.table_report.set_filter_table)
+        self.combo_years.activated.connect(self.set_filter)
         self.combo_years.activated.connect(self.table_report.bild_table)
         self.combo_years.setCursor(Qt.PointingHandCursor)
 
         # фильтр по месяцу
         self.combo_month = QComboBox(self, objectName='combo_month')
-        self.list_month = list(self.dict_month[self.combo_years.currentText()].values())
+        self.list_month = list(self.list_all_dates[self.combo_years.currentText()].values())
         self.combo_month.addItems(self.list_month)
         current_month = datetime.strptime(str(datetime.now().date()), "%Y-%m-%d").strftime("%B")
         self.combo_month.setCurrentText(current_month)
@@ -507,58 +494,58 @@ class TableWindow(QWidget):
 
     def change_worker_hours(self, h, p, tod):
         self.table_report.copy_report()
-        rat = self.table_report.buff_copy_rating
-        stat = self.table_report.buff_copy_status
-        des = self.table_report.buff_copy_description
-        team = self.table_report.buff_copy_team
+        rat = self.table_report.buff_rating
+        stat = self.table_report.buff_status
+        des = self.table_report.buff_descript
+        team = self.table_report.buff_team
         self.table_report.write_report(h, rat, stat, p, tod, des, self.table_report.id_worker, self.table_report.id_date, team)
         self.table_report.check_table()
         self.table_report.fill_panel()
 
     def change_worker_status(self, stat):
         self.table_report.copy_report()
-        h = self.table_report.buff_copy_hours
-        rat = self.table_report.buff_copy_rating
-        p = self.table_report.buff_copy_place
-        tod = self.table_report.buff_copy_time_of_day
-        des = self.table_report.buff_copy_description
-        team = self.table_report.buff_copy_team
+        h = self.table_report.buff_hours
+        rat = self.table_report.buff_rating
+        p = self.table_report.buff_place
+        tod = self.table_report.buff_tod
+        des = self.table_report.buff_descript
+        team = self.table_report.buff_team
         self.table_report.write_report(h, rat, stat, p, tod, des, self.table_report.id_worker, self.table_report.id_date, team)
         self.table_report.check_table()
         self.table_report.fill_panel()
 
     def change_worker_rating(self, rat):
         self.table_report.copy_report()
-        h = self.table_report.buff_copy_hours
-        stat = self.table_report.buff_copy_status
-        p = self.table_report.buff_copy_place
-        tod = self.table_report.buff_copy_time_of_day
-        des = self.table_report.buff_copy_description
-        team = self.table_report.buff_copy_team
+        h = self.table_report.buff_hours
+        stat = self.table_report.buff_status
+        p = self.table_report.buff_place
+        tod = self.table_report.buff_tod
+        des = self.table_report.buff_descript
+        team = self.table_report.buff_team
         self.table_report.write_report(h, rat, stat, p, tod, des, self.table_report.id_worker, self.table_report.id_date, team)
         self.table_report.check_table()
         self.table_report.fill_panel()
 
     def change_worker_description(self, des):
         self.table_report.copy_report()
-        h = self.table_report.buff_copy_hours
-        rat = self.table_report.buff_copy_rating
-        stat = self.table_report.buff_copy_status
-        p = self.table_report.buff_copy_place
-        tod = self.table_report.buff_copy_time_of_day
-        team = self.table_report.buff_copy_team
+        h = self.table_report.buff_hours
+        rat = self.table_report.buff_rating
+        stat = self.table_report.buff_status
+        p = self.table_report.buff_place
+        tod = self.table_report.buff_tod
+        team = self.table_report.buff_team
         self.table_report.write_report(h, rat, stat, p, tod, des, self.table_report.id_worker, self.table_report.id_date, team)
         self.table_report.check_table()
         self.table_report.fill_panel()
 
     def change_team(self, team):
         self.table_report.copy_report()
-        h = self.table_report.buff_copy_hours
-        rat = self.table_report.buff_copy_rating
-        stat = self.table_report.buff_copy_status
-        p = self.table_report.buff_copy_place
-        tod = self.table_report.buff_copy_time_of_day
-        des = self.table_report.buff_copy_description
+        h = self.table_report.buff_hours
+        rat = self.table_report.buff_rating
+        stat = self.table_report.buff_status
+        p = self.table_report.buff_place
+        tod = self.table_report.buff_tod
+        des = self.table_report.buff_descript
         team = (team.split(":")[0], 0)[self.combo_teams.currentIndex() == 0]
         self.table_report.write_report(h, rat, stat, p, tod, des, self.table_report.id_worker, self.table_report.id_date, team)
         self.table_report.check_table()
@@ -599,62 +586,9 @@ class TableWindow(QWidget):
             widget = self.edit_layout.layout().itemAt(i).widget()
             widget.deleteLater()
 
-    def get_list_role(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_list_role())
-                    self.list_role = cursor.fetchall()
-                    combo_list_role = [role[1] for role in self.list_role]
-                    return combo_list_role
-        except:
-            pass
-
-    def get_list_guild(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_list_guild())
-                    self.list_guild = cursor.fetchall()
-                    for role in self.list_role:
-                        self.dict_guilds[role[1]] = []
-                        for guild in self.list_guild:
-                            if role[0] == guild[2]:
-                                self.dict_guilds[role[1]].append(guild[1])
-        except:
-            pass
-
-    def get_list_dates(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    all_date_dict = dict()
-                    cursor.execute(DataBase.sql_list_all_date())
-                    date_list = cursor.fetchall()
-                    year = 0
-                    for date in date_list:
-                        if year != date[0]:
-                            all_date_dict[str(date[0])] = dict()
-                            year = date[0]
-                        all_date_dict[str(date[0])][str(date[1])] = str(date[2]).lower()
-                    return all_date_dict
-        except:
-            pass
-
-    def get_list_teams(self):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_list_teams())
-                    list_teams_tmp = cursor.fetchall()
-                    self.list_teams = [str(team[1]) + ': ' + team[2] for team in list_teams_tmp]
-                    self.list_teams[0] = 'бригада'
-        except:
-            pass
-
     def change_list_month(self):
         self.combo_month.clear()
-        self.list_month = list(self.get_list_dates()[self.combo_years.currentText()].values())
+        self.list_month = list(self.list_all_dates[self.combo_years.currentText()].values())
         self.combo_month.addItems(self.list_month)
 
     def clear_filter(self):
@@ -682,7 +616,7 @@ class TableWindow(QWidget):
         #   Определяем смену работ
         time_of_day_dict = {0: '', 1: ' дневная', 2: ' ночная'}
         tod = self.table_report.reports_dict[self.table_report.id_worker][self.table_report.id_date]['time_of_day']
-        p_time_of_day = time_of_day_dict[tod]  # Читаем из combo-box текущее значение.
+        p_tod = time_of_day_dict[tod]  # Читаем из combo-box текущее значение.
 
         #   Определяем текст дополнительных работ из примечания к рабочему дню (input_decription).
         worker = self.table_report.id_worker
@@ -701,7 +635,7 @@ class TableWindow(QWidget):
         self.doc = QtGui.QTextDocument()
 
         #   Создаем объект наряда.
-        self.permit = PermitHtml(p_date, p_manager, p_producer, p_worker, p_time_of_day, p_description, p_guild)
+        self.permit = PermitHtml(p_date, p_manager, p_producer, p_worker, p_tod, p_description, p_guild)
 
         self.doc.setHtml(self.permit.html_content)
         self.doc.setPageSize(QtCore.QSizeF(printer.pageRect().size()))
@@ -718,22 +652,23 @@ class TableWindow(QWidget):
         document.print_(printer)
 
     def get_settings(self, setting):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_read_settings(), (setting,))
-                    return cursor.fetchall()
-        except:
-            pass
+        return select_settings(setting)
 
     def show_input_description(self):
         worker = self.table_report.id_worker
         date = self.table_report.id_date
         cur_text = self.table_report.reports_dict[worker][date]['description']
         self.window_description = InputDescription(cur_text)
-        self.window_description.btn_apply.clicked.connect(lambda x: self.change_worker_description(self.window_description.input_decription.toPlainText()))
+        self.window_description.btn_apply.clicked.connect(
+            lambda x: self.change_worker_description(self.window_description.input_decription.toPlainText()))
         self.window_description.show()
 
+    def set_filter(self):
+        self.table_report.set_filter_table()
+        self.combo_years.setCurrentText(self.table_report.filter_year)
+        self.combo_month.setCurrentText(self.table_report.filter_month)
+        self.combo_role.setCurrentText(self.table_report.filter_role)
+        self.combo_guild.setCurrentText(self.table_report.filter_guild)
 
 # класс - таблица
 class TableReport(QTableWidget):
@@ -748,10 +683,10 @@ class TableReport(QTableWidget):
             with open(self.path_to_file, 'r', encoding='utf-8') as f:
                 self.filter_text = json.load(f)
         else:
-            data = {"filterRole": "rs.role", "filterGuild": "gd.guild"}
+            data = {"filterRole": '%%', "filterGuild": '%%'}
             with open(self.path_to_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f)
-                self.filter_text = {"filterRole": "rs.role", "filterGuild": "gd.guild"}
+                self.filter_text = {"filterRole": '%%', "filterGuild": '%%'}
 
         self.show_panel_mode = 0
         self.type_scheduler = 0
@@ -785,9 +720,9 @@ class TableReport(QTableWidget):
             months = {'январь': '1', 'февраль': '2', 'март': '3', 'апрель': '4', 'май': '5', 'июнь': '6',
                       'июль': '7', 'август': '8', 'сентябрь': '9', 'октябрь': '10', 'ноябрь': '11', 'декабрь': '12'}
             combo_role_text = self.wg.combo_role.currentText()
-            self.filter_role = ("'" + combo_role_text + "'", 'rs.role')[combo_role_text == 'должность']
+            self.filter_role = (self.wg.combo_role.currentText(), '%%')[combo_role_text == 'должность']
             combo_guild_text = self.wg.combo_guild.currentText()
-            self.filter_guild = ("'" + combo_guild_text + "'", 'gd.guild')[combo_guild_text == 'специальность']
+            self.filter_guild = (self.wg.combo_guild.currentText(), '%%')[combo_guild_text == 'специальность']
             self.filter_year = self.wg.combo_years.currentText()
             self.filter_month = months[self.wg.combo_month.currentText()]
 
@@ -798,34 +733,12 @@ class TableReport(QTableWidget):
                 json.dump(filter_write, outfile, ensure_ascii=False)
 
     def get_reports(self):
-        with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    DataBase.sql_read_workers_report(self.filter_role, self.filter_year, self.filter_month,
-                                                     self.filter_guild))
-                self.reports = cursor.fetchall()
-                id_report = 0
-                new_reports_dict = dict()
-                for report in self.reports:
-                    if id_report != report[7]:
-                        new_reports_dict[report[7]] = dict()
-                        id_report = report[7]
-                    new_reports_dict[report[7]][report[8]] = {'role': report[13], 'hour': report[4],
-                                                              'rating': report[5], 'status': report[6],
-                                                              'place': report[10], 'time_of_day': report[11],
-                                                              'description': report[12], 'team': report[14],
-                                                              'brigadier': report[15], 'guild': report[9],
-                                                              'props_type': report[16]}
-                return new_reports_dict
-
-    def get_dates(self, year, month):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_read_date_report(), (year, month,))
-                    return tuple(cursor.fetchall())
-        except:
-            pass
+        r = self.filter_role
+        g = self.filter_guild
+        y = self.filter_year
+        m = self.filter_month
+        new_reports_dict, self.reports = select_reports(r, g, y, m)
+        return new_reports_dict
 
     def click_table(self, row, col):  # row - номер строки, col - номер столбца
         if col > 2:
@@ -849,75 +762,43 @@ class TableReport(QTableWidget):
             if self.wg.findChild(QPushButton, name='btn_scheduler_type1'):
                 self.wg.btn_scheduler_type1.setDown(not bool(self.type_scheduler))
                 self.wg.btn_scheduler_type2.setDown(bool(self.type_scheduler))
+
     def copy_report(self):
         if self.col > 2 and self.row > 0:
-            self.buff_copy_hours = self.reports_dict[self.id_worker][self.id_date]['hour']
-            self.buff_copy_rating = self.reports_dict[self.id_worker][self.id_date]['rating']
-            self.buff_copy_status = self.reports_dict[self.id_worker][self.id_date]['status']
-            self.buff_copy_place = self.reports_dict[self.id_worker][self.id_date]['place']
-            self.buff_copy_time_of_day = self.reports_dict[self.id_worker][self.id_date]['time_of_day']
-            self.buff_copy_description = self.reports_dict[self.id_worker][self.id_date]['description']
-            self.buff_copy_team = self.reports_dict[self.id_worker][self.id_date]['team']
+            report_cell = self.reports_dict[self.id_worker][self.id_date]
+            self.buff_hours = report_cell['hour']
+            self.buff_rating = report_cell['rating']
+            self.buff_status = report_cell['status']
+            self.buff_place = report_cell['place']
+            self.buff_tod = report_cell['time_of_day']
+            self.buff_descript = report_cell['description']
+            self.buff_team = report_cell['team']
 
     def paste_report(self):
         if self.col > 2 and self.row > 0:
-            match self.reports_dict[self.id_worker][self.id_date]['props_type']:
-                case '1':
-                    hour = self.buff_copy_hours
-                    status = self.buff_copy_status
-                    team = 0
-                    time_of_day = 0
-                    place = 0
-                    rating = 0
-                    description = ''
-                    self.write_report(hour, rating, status, place, time_of_day, description, self.id_worker,
-                                      self.id_date, team)
-                case '2':
-                    hour = self.buff_copy_hours
-                    status = self.buff_copy_status
-                    team = 0
-                    time_of_day = self.buff_copy_time_of_day
-                    place = self.buff_copy_place
-                    rating = self.buff_copy_rating
-                    description = self.buff_copy_description
-                    self.write_report(hour, rating, status, place, time_of_day, description, self.id_worker,
-                                      self.id_date, team)
-                case '3':
-                    hour = self.buff_copy_hours
-                    status = self.buff_copy_status
-                    team = self.buff_copy_team
-                    time_of_day = self.buff_copy_time_of_day
-                    place = self.buff_copy_place
-                    rating = self.buff_copy_rating
-                    description = self.buff_copy_description
-                    self.write_report(hour, rating, status, place, time_of_day, description, self.id_worker,
-                                      self.id_date, team)
-
+            hour = self.buff_hours
+            stat = self.buff_status
+            team = self.buff_team
+            tod = self.buff_tod
+            place = self.buff_place
+            rat = self.buff_rating
+            des = self.buff_descript
+            if self.reports_dict[self.id_worker][self.id_date]['props_type'] == '1':
+                team, tod, place, rat, des = 0, 0, 0, 0, ''
+            elif self.reports_dict[self.id_worker][self.id_date]['props_type'] == '2':
+                team = 0
+            self.write_report(hour, rat, stat, place, tod, des, self.id_worker, self.id_date, team)
             self.click_cell()
 
     def clear_report(self):
         self.init_item_table()
         if self.col > 2 and self.row > 0:
-            hour = 0
-            rating = 0
-            status = 0
-            place = 0
-            time_of_day = 0
-            description = ''
-            team = 0
-            self.write_report(hour, rating, status, place, time_of_day, description, self.id_worker, self.id_date, team)
+            self.write_report(0, 0, 0, 0, 0, '', self.id_worker, self.id_date, 0)
             self.click_cell()
 
     def write_report(self, hour, rating, status, place, time_of_day, description, id_worker, id_date, team):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                conn.autocommit = True
-                with conn.cursor() as cursor:
-                    cursor.execute(DataBase.sql_edit_table(),
-                                   (hour, rating, status, place, time_of_day, description, team, id_worker, id_date))
-            self.check_table()
-        except:
-            pass
+        update_report(hour, rating, status, place, time_of_day, description, team, id_worker, id_date)
+        self.check_table()
 
     def check_table(self):
         new_reports_dict = self.get_reports()
@@ -962,7 +843,7 @@ class TableReport(QTableWidget):
         old_position_scroll = scroll.value() / (scroll.maximum() or 1)
         self.setColumnCount(0)
         self.setRowCount(0)
-        self.dates = self.get_dates(self.filter_year, self.filter_month)
+        self.dates = select_date(self.filter_year, self.filter_month)
         self.reports_dict = self.get_reports()
 
         fio_dict = {report[7]: report[0] + ' ' + report[1][:1] + '. ' + report[2][:1] + '.' for report in
@@ -1024,12 +905,12 @@ class TableReport(QTableWidget):
         data_status = data['status']
         data_rating = data['rating']
         data_place = data['place']
-        data_time_of_day = data['time_of_day']
+        data_tod = data['time_of_day']
         data_description = data['description']
         data_team = data['team']
 
         # верх - лево
-        time_of_day = QtWidgets.QLabel(('', ('д', 'н')[data_time_of_day != 1])[data_time_of_day != 0])
+        time_of_day = QtWidgets.QLabel(('', ('д', 'н')[data_tod != 1])[data_tod != 0])
         time_of_day.setFont(QFont("CalibriLight", 8, QtGui.QFont.Normal))
         time_of_day.setStyleSheet('color: rgb(150, 150, 150);')
 
@@ -1124,7 +1005,7 @@ class TableReport(QTableWidget):
             if date[0] >= id_date:
                 self.id_date = date[0]
                 self.copy_report()
-                self.buff_copy_time_of_day = type_work[self.type_scheduler][day_work]
+                self.buff_tod = type_work[self.type_scheduler][day_work]
                 self.paste_report()
                 self.col += 1
                 day_work = (day_work + 1, 0)[day_work == len(type_work[self.type_scheduler]) - 1]
@@ -1142,7 +1023,7 @@ class TableReport(QTableWidget):
             if date[0] >= id_date:
                 self.id_date = date[0]
                 self.copy_report()
-                self.buff_copy_time_of_day = 0
+                self.buff_tod = 0
                 self.paste_report()
                 self.col += 1
         self.check_table()
@@ -1172,7 +1053,7 @@ class PermitHtml:
     def __init__(self, dat, me, pe, w, td, des, type_permit):
         super().__init__()
         self.dict_text = self.get_text_permit(
-            type_permit)  # Читаем из БД текстовку для наряда электриков. Получаем 3 словаря.
+            2)  # Читаем из БД текстовку для наряда электриков. Получаем 3 словаря.
         # 1 - шапка, 2 - таблица, 3 - подпись.
         self.date = dat
         self.manager_electric = me
@@ -1283,21 +1164,7 @@ class PermitHtml:
                 self.html_content += '</p>'
 
     def get_text_permit(self, type_permit):
-        try:
-            with connect(**DataBase.config(DataBase.login, DataBase.password)) as conn:
-                with conn.cursor() as cursor:
-                    dict_text = dict()
-                    cursor.execute(DataBase.sql_read_text_permit(), (2,))
-                    text_list = cursor.fetchall()
-                    group = 0
-                    for text in text_list:
-                        if group != text[0]:
-                            dict_text[str(text[0])] = dict()
-                            group = text[0]
-                        dict_text[str(text[0])][str(text[1])] = str(text[2])
-                    return dict_text
-        except:
-            pass
+        return select_text_permit(type_permit)
 
 
 class InputDescription(QWidget):
