@@ -96,5 +96,6 @@ class MainWindow(QMainWindow):
 
     def transfer_report_dict(self):
         self.reports_window.report_dict = self.table_window.table_report.reports_dict
-
+        self.reports_window.workers_dict = self.table_window.table_report.fio_dict
+        self.reports_window.dates = self.table_window.table_report.dates
 

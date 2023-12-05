@@ -1,4 +1,5 @@
 import locale
+import threading
 
 from PyQt5 import QtWebEngineWidgets, QtCore, QtGui, QtPrintSupport
 from PyQt5.QtCore import Qt, QSize
@@ -35,9 +36,8 @@ class ReportsWindow(QWidget):
         self.page_layout.addLayout(self.panel_layout)
 
         self.report_dict = dict()
-
-        #self.workers_list =
-
+        self.workers_dict = dict()
+        self.dates = tuple()
         self.html_content = ''
 
         self.show_element_panel()
@@ -79,20 +79,34 @@ class ReportsWindow(QWidget):
 
     def show_report_hour(self):
 
-        for key, value in self.report_dict.items():
-            pass
-            # self.html_content += '<table>'
-            # self.html_content += '<tr>'
-            # self.html_content += '<td></td>'
-            # self.html_content +=
-            # self.html_content +=
-            # self.html_content +=
-            # self.html_content +=
-            # self.html_content +=
-            # self.html_content +=
+        self.html_content = ''
 
+        dates_dict = {1: 'пн', 2: 'вт', 3: 'ср', 4: 'чт', 5: 'пт', 6: 'сб', 7: 'вс'}
 
+        self.html_content += '<table border="1" width="100%" style="border-collapse: collapse; font-size: 5px; font-family: Calibri Light;">'
 
+        self.html_content += '<thead>'
+        self.html_content += '<tr valign=middle style="font-size:100%;">'
+        self.html_content += '<th valign=middle style="width:2%">№<br>п/п</th>'
+        self.html_content += '<th valign=middle style="width:5%">ФИО</th>'
+        for i in range(len(self.dates)):
+            self.html_content += '<th valign=middle style="width:2%">' + (str(i + 1) + '<br>' + dates_dict[self.dates[i][2]]) + '</th>'
+        self.html_content += '</tr>'
+        self.html_content += '</thead>'
+
+        self.html_content += '<tbody>'
+        i = 1
+        for id_w, worker in self.workers_dict.items():
+            self.html_content += '</tr>'
+            self.html_content += '<td>' + str(i) + '</td>'
+            self.html_content += '<td>' + worker + '</td>'
+            for report in self.report_dict[id_w].values():
+                self.html_content += '<td>' + str(report['hour']) + '</td>'
+            self.html_content += '</tr>'
+            i += 1
+        self.html_content += '</tbody>'
+        self.html_content += '</table>'
+        self.report_view.setHtml(self.html_content)
 
     def show_report_place(self):
         self.report_view.setHtml(self.html_content)
@@ -101,18 +115,20 @@ class ReportsWindow(QWidget):
         printer = QtPrintSupport.QPrinter(QtPrintSupport.QPrinter.PrinterResolution)
         printer.setOutputFormat(QtPrintSupport.QPrinter.PdfFormat)
         printer.setPaperSize(QtPrintSupport.QPrinter.A4)
-        printer.setOrientation(QtPrintSupport.QPrinter.Portrait)
+        printer.setOrientation(QtPrintSupport.QPrinter.Landscape)
 
         self.doc = QtGui.QTextDocument()
-
         self.doc.setHtml(self.html_content)
         self.doc.setPageSize(QtCore.QSizeF(printer.pageRect().size()))
 
         permit_preview = QPrintPreviewDialog()
         permit_preview.setFixedSize(1000, 1000)
 
-        permit_preview.paintRequested.connect(self.print_preview)
+        th = threading.Thread(target=self.show_report(permit_preview))
+        th.start()
 
+    def show_report(self, permit_preview):
+        permit_preview.paintRequested.connect(self.print_preview)
         permit_preview.exec_()
 
     def print_preview(self, printer):
