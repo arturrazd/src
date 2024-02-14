@@ -35,13 +35,13 @@ class ReportsWindow(QWidget):
         self.page_layout.addWidget(self.report_view)
         self.page_layout.addLayout(self.panel_layout)
 
+        self.dates_dict = {1: 'пн', 2: 'вт', 3: 'ср', 4: 'чт', 5: 'пт', 6: 'сб', 7: 'вс'}
         self.report_dict = dict()
         self.workers_dict = dict()
         self.dates = tuple()
         self.html_content = ''
 
         self.show_element_panel()
-
         self.setLayout(self.page_layout)
 
     def show_element_panel(self):
@@ -54,7 +54,7 @@ class ReportsWindow(QWidget):
         btn_report_hours.setIconSize(self.icon_size)
         btn_report_hours.setFixedSize(self.input_btn_size)
         btn_report_hours.setStyleSheet(Styles.workers_btn())
-        btn_report_hours.clicked.connect(self.show_report_hour)
+        btn_report_hours.clicked.connect(self.show_report_hours)
         btn_report_hours.setCursor(Qt.PointingHandCursor)
         self.btn_layout.addWidget(btn_report_hours, 1, Qt.AlignCenter)
 
@@ -77,34 +77,41 @@ class ReportsWindow(QWidget):
         self.panel_layout.addStretch()
         self.panel_layout.addWidget(btn_print)
 
-    def show_report_hour(self):
-
+    def show_report_hours(self):
         self.html_content = ''
-
-        dates_dict = {1: 'пн', 2: 'вт', 3: 'ср', 4: 'чт', 5: 'пт', 6: 'сб', 7: 'вс'}
-
-        self.html_content += '<table border="1" width="100%" style="border-collapse: collapse; font-size: 5px; font-family: Calibri Light;">'
+        self.html_content += '<table border="1" width="100%" style="border-collapse: collapse; font-size: 8px; font-family: Times New Roman;">'
 
         self.html_content += '<thead>'
-        self.html_content += '<tr valign=middle style="font-size:100%;">'
-        self.html_content += '<th valign=middle style="width:2%">№<br>п/п</th>'
+        self.html_content += '<tr valign=middle style="font-size:100%; font-size: 10px; background: Silver;">'
+        self.html_content += '<th valign=middle style="width:1%">№<br>п/п</th>'
         self.html_content += '<th valign=middle style="width:5%">ФИО</th>'
         for i in range(len(self.dates)):
-            self.html_content += '<th valign=middle style="width:2%">' + (str(i + 1) + '<br>' + dates_dict[self.dates[i][2]]) + '</th>'
+            self.html_content += '<th valign=middle style="width:0.1%">' + (
+                        str(i + 1) + '<br>' + self.dates_dict[self.dates[i][2]]) + '</th>'
+        self.html_content += '<th valign=middle style="width:0.1%">' + 'Всего' + '<br>' + 'часов' + '</th>'
         self.html_content += '</tr>'
         self.html_content += '</thead>'
-
+        self.html_content += '<font size="10">'
         self.html_content += '<tbody>'
         i = 1
         for id_w, worker in self.workers_dict.items():
-            self.html_content += '</tr>'
-            self.html_content += '<td>' + str(i) + '</td>'
+            total_hour = 0
+            self.html_content += '<tr>'
+            self.html_content += '<td align="center">' + str(i) + '</td>'
             self.html_content += '<td>' + worker + '</td>'
             for report in self.report_dict[id_w].values():
-                self.html_content += '<td>' + str(report['hour']) + '</td>'
+                if i % 2 == 0:
+                    self.html_content += '<td align="center" style="background: LightGrey;">'
+                else:
+                    self.html_content += '<td align="center" style="background: White;">'
+                self.html_content += str(report['hour']) + '</td>'
+                total_hour += report['hour']
+            self.html_content += '<td align="center">' + str(total_hour) + '</td>'
             self.html_content += '</tr>'
+
             i += 1
         self.html_content += '</tbody>'
+        self.html_content += '</font>'
         self.html_content += '</table>'
         self.report_view.setHtml(self.html_content)
 
@@ -134,4 +141,3 @@ class ReportsWindow(QWidget):
     def print_preview(self, printer):
         document = self.doc
         document.print_(printer)
-

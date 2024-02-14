@@ -231,6 +231,7 @@ class TableWindow(QWidget):
         self.table_report.change_list_guilds()
         self.combo_guild.setCurrentText(self.table_report.filter_guild)
         self.combo_years.setCurrentText(self.table_report.filter_year)
+        self.change_list_month()
         self.combo_month.setCurrentText(datetime.now().date().strftime("%B").lower())
 
     def create_btn_edit_hours(self):
@@ -688,6 +689,9 @@ class TableReport(QTableWidget):
         self.pix_descript = QPixmap('descript.png')
         self.pix_descript = self.pix_descript.scaled(pix_size)
 
+        self.months = {'январь': '1', 'февраль': '2', 'март': '3', 'апрель': '4', 'май': '5', 'июнь': '6',
+                  'июль': '7', 'август': '8', 'сентябрь': '9', 'октябрь': '10', 'ноябрь': '11', 'декабрь': '12'}
+
         self.path_to_file = os.path.join("C:\\Users", os.environ["username"], "filter.json")
         if os.path.isfile(self.path_to_file):
             with open(self.path_to_file, 'r', encoding='utf-8') as f:
@@ -700,6 +704,7 @@ class TableReport(QTableWidget):
 
         self.filter_role = self.filter_text.get('filterRole')
         self.filter_guild = self.filter_text.get('filterGuild')
+
         self.filter_year = str(datetime.now().date().year)
         self.filter_month = str(datetime.now().date().month)
 
@@ -707,14 +712,12 @@ class TableReport(QTableWidget):
         self.bild_table()
 
     def set_filter_table(self):
-        months = {'январь': '1', 'февраль': '2', 'март': '3', 'апрель': '4', 'май': '5', 'июнь': '6',
-                  'июль': '7', 'август': '8', 'сентябрь': '9', 'октябрь': '10', 'ноябрь': '11', 'декабрь': '12'}
         combo_role_text = self.wg.combo_role.currentText()
         self.filter_role = (self.wg.combo_role.currentText(), '%%')[combo_role_text == 'должность']
         combo_guild_text = self.wg.combo_guild.currentText()
         self.filter_guild = (self.wg.combo_guild.currentText(), '%%')[combo_guild_text == 'специальность']
         self.filter_year = self.wg.combo_years.currentText()
-        self.filter_month = months[self.wg.combo_month.currentText()]
+        self.filter_month = self.months[self.wg.combo_month.currentText()]
 
         filter_write = {'filterRole': self.filter_role,
                         'filterGuild': self.filter_guild}

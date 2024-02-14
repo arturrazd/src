@@ -28,6 +28,7 @@ class MainWindow(QMainWindow):
                                         self.list_all_dates)
         self.reports_window = ReportsWindow()
 
+
         # создание кнопок панели бокового меню
         self.btn_1 = QPushButton('табель', self)
         self.btn_1.clicked.connect(self.table_window.table_report.click_cell)
